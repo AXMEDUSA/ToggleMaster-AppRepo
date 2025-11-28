@@ -9,6 +9,7 @@ on:
       - "targeting-service/**"
       - "evaluation-service/**"
       - "analytics-service/**"
+  workflow_dispatch:
 
 env:
   ACR_LOGIN_SERVER: toggleacr.azurecr.io
