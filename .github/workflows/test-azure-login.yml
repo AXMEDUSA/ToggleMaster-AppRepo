@@ -1,0 +1,24 @@
+name: Test Azure Login
+
+on:
+  workflow_dispatch:   # só roda manualmente
+
+jobs:
+  test-login:
+    runs-on: ubuntu-latest
+    environment: dev   # usa os secrets do environment "dev"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Azure login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.CLIENT_ID }}
+          tenant-id: ${{ secrets.TENANT_ID }}
+          subscription-id: ${{ secrets.SUBSCRIPTION_ID }}
+          client-secret: ${{ secrets.CLIENT_SECRET }}
+
+      - name: Verify subscription
+        run: |
+          az account show
