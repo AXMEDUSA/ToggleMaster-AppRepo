@@ -15,7 +15,7 @@ env:
 
 jobs:
   auth-service:
-    if: contains(github.event.head_commit.message, 'auth-service') || github.event_name == 'push'
+    if: contains(github.event.head_commit.modified, 'auth-service') || contains(github.event.head_commit.added, 'auth-service')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -32,7 +32,7 @@ jobs:
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
-      - name: Build & push
+      - name: Build & push auth-service
         run: |
           IMAGE=${{ env.ACR_LOGIN_SERVER }}/auth-service:${{ github.sha }}
           docker build -t $IMAGE ./auth-service
@@ -41,8 +41,8 @@ jobs:
           docker push ${{ env.ACR_LOGIN_SERVER }}/auth-service:latest
 
   flag-service:
+    if: contains(github.event.head_commit.modified, 'flag-service') || contains(github.event.head_commit.added, 'flag-service')
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v3
       - uses: azure/login@v1
@@ -61,6 +61,7 @@ jobs:
           docker push ${{ env.ACR_LOGIN_SERVER }}/flag-service:latest
 
   targeting-service:
+    if: contains(github.event.head_commit.modified, 'targeting-service') || contains(github.event.head_commit.added, 'targeting-service')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -80,6 +81,7 @@ jobs:
           docker push ${{ env.ACR_LOGIN_SERVER }}/targeting-service:latest
 
   evaluation-service:
+    if: contains(github.event.head_commit.modified, 'evaluation-service') || contains(github.event.head_commit.added, 'evaluation-service')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -99,6 +101,7 @@ jobs:
           docker push ${{ env.ACR_LOGIN_SERVER }}/evaluation-service:latest
 
   analytics-service:
+    if: contains(github.event.head_commit.modified, 'analytics-service') || contains(github.event.head_commit.added, 'analytics-service')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
