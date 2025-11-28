@@ -17,12 +17,8 @@ env:
 jobs:
   auth-service:
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || contains(join(github.event.head_commit.modified), 'auth-service') || contains(join(github.event.head_commit.added), 'auth-service')
     steps:
-      - name: Check if auth-service was modified
-        if: github.event_name == 'push' && !contains(github.event.head_commit.message, 'auth-service') && !contains(join(github.event.head_commit.modified), 'auth-service') && !contains(join(github.event.head_commit.added), 'auth-service')
-        run: echo "Skipping auth-service job"
-        continue-on-error: true
-
       - uses: actions/checkout@v3
       - name: Azure login
         uses: azure/login@v1
@@ -44,12 +40,8 @@ jobs:
 
   flag-service:
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || contains(join(github.event.head_commit.modified), 'flag-service') || contains(join(github.event.head_commit.added), 'flag-service')
     steps:
-      - name: Check if flag-service was modified
-        if: github.event_name == 'push' && !contains(join(github.event.head_commit.modified), 'flag-service') && !contains(join(github.event.head_commit.added), 'flag-service')
-        run: echo "Skipping flag-service job"
-        continue-on-error: true
-
       - uses: actions/checkout@v3
       - name: Azure login
         uses: azure/login@v1
@@ -71,12 +63,8 @@ jobs:
 
   targeting-service:
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || contains(join(github.event.head_commit.modified), 'targeting-service') || contains(join(github.event.head_commit.added), 'targeting-service')
     steps:
-      - name: Check if targeting-service was modified
-        if: github.event_name == 'push' && !contains(join(github.event.head_commit.modified), 'targeting-service') && !contains(join(github.event.head_commit.added), 'targeting-service')
-        run: echo "Skipping targeting-service job"
-        continue-on-error: true
-
       - uses: actions/checkout@v3
       - name: Azure login
         uses: azure/login@v1
@@ -98,12 +86,8 @@ jobs:
 
   evaluation-service:
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || contains(join(github.event.head_commit.modified), 'evaluation-service') || contains(join(github.event.head_commit.added), 'evaluation-service')
     steps:
-      - name: Check if evaluation-service was modified
-        if: github.event_name == 'push' && !contains(join(github.event.head_commit.modified), 'evaluation-service') && !contains(join(github.event.head_commit.added), 'evaluation-service')
-        run: echo "Skipping evaluation-service job"
-        continue-on-error: true
-
       - uses: actions/checkout@v3
       - name: Azure login
         uses: azure/login@v1
@@ -125,12 +109,8 @@ jobs:
 
   analytics-service:
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || contains(join(github.event.head_commit.modified), 'analytics-service') || contains(join(github.event.head_commit.added), 'analytics-service')
     steps:
-      - name: Check if analytics-service was modified
-        if: github.event_name == 'push' && !contains(join(github.event.head_commit.modified), 'analytics-service') && !contains(join(github.event.head_commit.added), 'analytics-service')
-        run: echo "Skipping analytics-service job"
-        continue-on-error: true
-
       - uses: actions/checkout@v3
       - name: Azure login
         uses: azure/login@v1
