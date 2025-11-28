@@ -6,7 +6,7 @@ on:
 jobs:
   test-login:
     runs-on: ubuntu-latest
-    environment: dev   # usa os secrets do environment "dev"
+    environment: dev   # se os secrets estão no environment "dev"
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -14,10 +14,7 @@ jobs:
       - name: Azure login
         uses: azure/login@v1
         with:
-          client-id: ${{ secrets.CLIENT_ID }}
-          tenant-id: ${{ secrets.TENANT_ID }}
-          subscription-id: ${{ secrets.SUBSCRIPTION_ID }}
-          client-secret: ${{ secrets.CLIENT_SECRET }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Verify subscription
         run: |
