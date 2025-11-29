@@ -1,25 +1,26 @@
 name: Test Azure Login
 
 on:
-  workflow_dispatch:   # só roda manualmente
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
   test-login:
     runs-on: ubuntu-latest
-    environment: dev   # se os secrets estão no environment "dev"
+    environment: prd
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Azure Login
-        uses: azure/login@v1
+        uses: azure/login@v2
         with:
-          auth-type: SERVICE_PRINCIPAL
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
 
       - name: Verify subscription
-        run: |
-          az account show
+        run: az account show
