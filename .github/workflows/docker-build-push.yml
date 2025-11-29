@@ -13,7 +13,7 @@ on:
 
 env:
   ACR_LOGIN_SERVER: toggleacr.azurecr.io
-  # SHA completo; vamos cortar para 7 chars dentro do script
+  # SHA completo; vamos encurtar dentro dos scripts
   IMAGE_TAG: ${{ github.sha }}
 
 jobs:
