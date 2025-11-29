@@ -1,4 +1,4 @@
-name: Buildando imagem para o ACR 
+name: Build & Push Microservices to ACR
 
 on:
   push:
@@ -13,8 +13,8 @@ on:
 
 env:
   ACR_LOGIN_SERVER: toggleacr.azurecr.io
-  # versão comum para todos os serviços nesse run (SHA curto do commit)
-  IMAGE_TAG: ${{ github.sha[0:7] }}
+  # SHA completo; vamos cortar para 7 chars dentro do script
+  IMAGE_TAG: ${{ github.sha }}
 
 jobs:
   auth-service:
@@ -41,7 +41,8 @@ jobs:
 
       - name: Build & push auth-service
         run: |
-          IMAGE=${{ env.ACR_LOGIN_SERVER }}/auth-service:${{ env.IMAGE_TAG }}
+          TAG=${IMAGE_TAG:0:7}
+          IMAGE=${{ env.ACR_LOGIN_SERVER }}/auth-service:${TAG}
           docker build -t $IMAGE ./auth-service
           docker push $IMAGE
 
@@ -69,7 +70,8 @@ jobs:
 
       - name: Build & push flag-service
         run: |
-          IMAGE=${{ env.ACR_LOGIN_SERVER }}/flag-service:${{ env.IMAGE_TAG }}
+          TAG=${IMAGE_TAG:0:7}
+          IMAGE=${{ env.ACR_LOGIN_SERVER }}/flag-service:${TAG}
           docker build -t $IMAGE ./flag-service
           docker push $IMAGE
 
@@ -97,7 +99,8 @@ jobs:
 
       - name: Build & push targeting-service
         run: |
-          IMAGE=${{ env.ACR_LOGIN_SERVER }}/targeting-service:${{ env.IMAGE_TAG }}
+          TAG=${IMAGE_TAG:0:7}
+          IMAGE=${{ env.ACR_LOGIN_SERVER }}/targeting-service:${TAG}
           docker build -t $IMAGE ./targeting-service
           docker push $IMAGE
 
@@ -125,7 +128,8 @@ jobs:
 
       - name: Build & push evaluation-service
         run: |
-          IMAGE=${{ env.ACR_LOGIN_SERVER }}/evaluation-service:${{ env.IMAGE_TAG }}
+          TAG=${IMAGE_TAG:0:7}
+          IMAGE=${{ env.ACR_LOGIN_SERVER }}/evaluation-service:${TAG}
           docker build -t $IMAGE ./evaluation-service
           docker push $IMAGE
 
@@ -153,6 +157,7 @@ jobs:
 
       - name: Build & push analytics-service
         run: |
-          IMAGE=${{ env.ACR_LOGIN_SERVER }}/analytics-service:${{ env.IMAGE_TAG }}
+          TAG=${IMAGE_TAG:0:7}
+          IMAGE=${{ env.ACR_LOGIN_SERVER }}/analytics-service:${TAG}
           docker build -t $IMAGE ./analytics-service
           docker push $IMAGE
