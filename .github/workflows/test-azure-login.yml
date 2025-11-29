@@ -14,7 +14,7 @@ jobs:
       - name: Azure login
         uses: azure/login@v1
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          auth-type: SERVICE_PRINCIPAL
 
       - name: Verify subscription
         run: |
