@@ -17,18 +17,15 @@ env:
 jobs:
   auth-service:
     runs-on: ubuntu-latest
-    environment: dev
+    environment: prd
     if: github.event_name == 'workflow_dispatch' || contains(join(github.event.head_commit.modified), 'auth-service') || contains(join(github.event.head_commit.added), 'auth-service')
     steps:
       - uses: actions/checkout@v3
 
       - name: Azure login
-        uses: azure/login@v1
+        uses: azure/login@v2
         with:
-          client-id: ${{ secrets.CLIENT_ID }}
-          tenant-id: ${{ secrets.TENANT_ID }}
-          subscription-id: ${{ secrets.SUBSCRIPTION_ID }}
-          client-secret: ${{ secrets.CLIENT_SECRET }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Docker login to ACR
         uses: azure/docker-login@v1
@@ -47,18 +44,15 @@ jobs:
 
   flag-service:
     runs-on: ubuntu-latest
-    environment: dev
+    environment: prd
     if: github.event_name == 'workflow_dispatch' || contains(join(github.event.head_commit.modified), 'flag-service') || contains(join(github.event.head_commit.added), 'flag-service')
     steps:
       - uses: actions/checkout@v3
 
       - name: Azure login
-        uses: azure/login@v1
+        uses: azure/login@v2
         with:
-          client-id: ${{ secrets.CLIENT_ID }}
-          tenant-id: ${{ secrets.TENANT_ID }}
-          subscription-id: ${{ secrets.SUBSCRIPTION_ID }}
-          client-secret: ${{ secrets.CLIENT_SECRET }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Docker login to ACR
         uses: azure/docker-login@v1
@@ -77,18 +71,15 @@ jobs:
 
   targeting-service:
     runs-on: ubuntu-latest
-    environment: dev
+    environment: prd
     if: github.event_name == 'workflow_dispatch' || contains(join(github.event.head_commit.modified), 'targeting-service') || contains(join(github.event.head_commit.added), 'targeting-service')
     steps:
       - uses: actions/checkout@v3
 
       - name: Azure login
-        uses: azure/login@v1
+        uses: azure/login@v2
         with:
-          client-id: ${{ secrets.CLIENT_ID }}
-          tenant-id: ${{ secrets.TENANT_ID }}
-          subscription-id: ${{ secrets.SUBSCRIPTION_ID }}
-          client-secret: ${{ secrets.CLIENT_SECRET }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Docker login to ACR
         uses: azure/docker-login@v1
@@ -107,18 +98,15 @@ jobs:
 
   evaluation-service:
     runs-on: ubuntu-latest
-    environment: dev
+    environment: prd
     if: github.event_name == 'workflow_dispatch' || contains(join(github.event.head_commit.modified), 'evaluation-service') || contains(join(github.event.head_commit.added), 'evaluation-service')
     steps:
       - uses: actions/checkout@v3
 
       - name: Azure login
-        uses: azure/login@v1
+        uses: azure/login@v2
         with:
-          client-id: ${{ secrets.CLIENT_ID }}
-          tenant-id: ${{ secrets.TENANT_ID }}
-          subscription-id: ${{ secrets.SUBSCRIPTION_ID }}
-          client-secret: ${{ secrets.CLIENT_SECRET }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Docker login to ACR
         uses: azure/docker-login@v1
@@ -137,18 +125,15 @@ jobs:
 
   analytics-service:
     runs-on: ubuntu-latest
-    environment: dev
+    environment: prd
     if: github.event_name == 'workflow_dispatch' || contains(join(github.event.head_commit.modified), 'analytics-service') || contains(join(github.event.head_commit.added), 'analytics-service')
     steps:
       - uses: actions/checkout@v3
 
       - name: Azure login
-        uses: azure/login@v1
+        uses: azure/login@v2
         with:
-          client-id: ${{ secrets.CLIENT_ID }}
-          tenant-id: ${{ secrets.TENANT_ID }}
-          subscription-id: ${{ secrets.SUBSCRIPTION_ID }}
-          client-secret: ${{ secrets.CLIENT_SECRET }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Docker login to ACR
         uses: azure/docker-login@v1
