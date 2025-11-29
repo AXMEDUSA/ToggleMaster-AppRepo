@@ -1,24 +1,28 @@
-name: Build & Push Microservices to ACR
+name: Buildando imagem para o ACR 
 
 on:
-  # Dispara quando você criar um release com tag (v1.0.0, v1.1.0, etc)
   push:
-    tags:
-      - "v*.*.*"
-
-  # Opcional: permite rodar manualmente
+    branches: [ "main" ]
+    paths:
+      - "auth-service/**"
+      - "flag-service/**"
+      - "targeting-service/**"
+      - "evaluation-service/**"
+      - "analytics-service/**"
   workflow_dispatch:
 
 env:
   ACR_LOGIN_SERVER: toggleacr.azurecr.io
-  # Se for tag (release) → usa a tag (v1.0.0)
-  # Se for execução manual → cai pro SHA do commit
-  IMAGE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || github.sha }}
+  # versão comum para todos os serviços nesse run (SHA curto do commit)
+  IMAGE_TAG: ${{ github.sha[0:7] }}
 
 jobs:
   auth-service:
     runs-on: ubuntu-latest
     environment: prd
+    if: github.event_name == 'workflow_dispatch' ||
+        contains(join(github.event.head_commit.modified), 'auth-service') ||
+        contains(join(github.event.head_commit.added), 'auth-service')
 
     steps:
       - uses: actions/checkout@v3
@@ -39,13 +43,14 @@ jobs:
         run: |
           IMAGE=${{ env.ACR_LOGIN_SERVER }}/auth-service:${{ env.IMAGE_TAG }}
           docker build -t $IMAGE ./auth-service
-          docker tag $IMAGE ${{ env.ACR_LOGIN_SERVER }}/auth-service:latest
           docker push $IMAGE
-          docker push ${{ env.ACR_LOGIN_SERVER }}/auth-service:latest
 
   flag-service:
     runs-on: ubuntu-latest
     environment: prd
+    if: github.event_name == 'workflow_dispatch' ||
+        contains(join(github.event.head_commit.modified), 'flag-service') ||
+        contains(join(github.event.head_commit.added), 'flag-service')
 
     steps:
       - uses: actions/checkout@v3
@@ -66,13 +71,14 @@ jobs:
         run: |
           IMAGE=${{ env.ACR_LOGIN_SERVER }}/flag-service:${{ env.IMAGE_TAG }}
           docker build -t $IMAGE ./flag-service
-          docker tag $IMAGE ${{ env.ACR_LOGIN_SERVER }}/flag-service:latest
           docker push $IMAGE
-          docker push ${{ env.ACR_LOGIN_SERVER }}/flag-service:latest
 
   targeting-service:
     runs-on: ubuntu-latest
     environment: prd
+    if: github.event_name == 'workflow_dispatch' ||
+        contains(join(github.event.head_commit.modified), 'targeting-service') ||
+        contains(join(github.event.head_commit.added), 'targeting-service')
 
     steps:
       - uses: actions/checkout@v3
@@ -93,13 +99,14 @@ jobs:
         run: |
           IMAGE=${{ env.ACR_LOGIN_SERVER }}/targeting-service:${{ env.IMAGE_TAG }}
           docker build -t $IMAGE ./targeting-service
-          docker tag $IMAGE ${{ env.ACR_LOGIN_SERVER }}/targeting-service:latest
           docker push $IMAGE
-          docker push ${{ env.ACR_LOGIN_SERVER }}/targeting-service:latest
 
   evaluation-service:
     runs-on: ubuntu-latest
     environment: prd
+    if: github.event_name == 'workflow_dispatch' ||
+        contains(join(github.event.head_commit.modified), 'evaluation-service') ||
+        contains(join(github.event.head_commit.added), 'evaluation-service')
 
     steps:
       - uses: actions/checkout@v3
@@ -120,13 +127,14 @@ jobs:
         run: |
           IMAGE=${{ env.ACR_LOGIN_SERVER }}/evaluation-service:${{ env.IMAGE_TAG }}
           docker build -t $IMAGE ./evaluation-service
-          docker tag $IMAGE ${{ env.ACR_LOGIN_SERVER }}/evaluation-service:latest
           docker push $IMAGE
-          docker push ${{ env.ACR_LOGIN_SERVER }}/evaluation-service:latest
 
   analytics-service:
     runs-on: ubuntu-latest
     environment: prd
+    if: github.event_name == 'workflow_dispatch' ||
+        contains(join(github.event.head_commit.modified), 'analytics-service') ||
+        contains(join(github.event.head_commit.added), 'analytics-service')
 
     steps:
       - uses: actions/checkout@v3
@@ -147,6 +155,4 @@ jobs:
         run: |
           IMAGE=${{ env.ACR_LOGIN_SERVER }}/analytics-service:${{ env.IMAGE_TAG }}
           docker build -t $IMAGE ./analytics-service
-          docker tag $IMAGE ${{ env.ACR_LOGIN_SERVER }}/analytics-service:latest
           docker push $IMAGE
-          docker push ${{ env.ACR_LOGIN_SERVER }}/analytics-service:latest
