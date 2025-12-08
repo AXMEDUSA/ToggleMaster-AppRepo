@@ -4,3 +4,4 @@ python-dotenv
 
 azure-storage-queue==12.9.0
 azure-data-tables==12.4.2
+six
