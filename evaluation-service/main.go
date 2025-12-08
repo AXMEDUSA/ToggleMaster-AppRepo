@@ -7,30 +7,30 @@ import (
 	"os"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/sqs"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue"
 	"github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
 )
 
-// Contexto global para o Redis
+// Contexto global
 var ctx = context.Background()
 
-// App struct para injeção de dependência
+// App struct para injeção de dependências
 type App struct {
 	RedisClient         *redis.Client
-	SqsSvc              *sqs.SQS
-	SqsQueueURL         string
+	QueueClient         *azqueue.QueueClient
+	QueueName           string
 	HttpClient          *http.Client
 	FlagServiceURL      string
 	TargetingServiceURL string
 }
 
 func main() {
-	_ = godotenv.Load() // Carrega .env para dev local
+	// Carrega .env em dev (ignorado em prod/contêiner se não existir)
+	_ = godotenv.Load()
 
-	// --- Configuração ---
+	// --- Variáveis obrigatórias ---
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8004"
@@ -38,7 +38,7 @@ func main() {
 
 	redisURL := os.Getenv("REDIS_URL")
 	if redisURL == "" {
-		log.Fatal("REDIS_URL deve ser definida (ex: redis://localhost:6379)")
+		log.Fatal("REDIS_URL deve ser definida (ex: redis://:senha@host:6380?ssl=true)")
 	}
 
 	flagSvcURL := os.Getenv("FLAG_SERVICE_URL")
@@ -51,19 +51,38 @@ func main() {
 		log.Fatal("TARGETING_SERVICE_URL deve ser definida")
 	}
 
-	// SQS é opcional no dev local, mas obrigatório em prod
-	sqsQueueURL := os.Getenv("AWS_SQS_URL")
-	awsRegion := os.Getenv("AWS_REGION")
-	if sqsQueueURL == "" {
-		log.Println("Atenção: AWS_SQS_URL não definida. Eventos não serão enviados.")
-	}
-	if awsRegion == "" && sqsQueueURL != "" {
-		log.Fatal("AWS_REGION deve ser definida para usar SQS")
+	// --- Azure Storage Queue ---
+
+	connStr := os.Getenv("AZURE_STORAGE_CONNECTION_STRING")
+	queueName := os.Getenv("AZURE_STORAGE_QUEUE_NAME")
+
+	var queueClient *azqueue.QueueClient
+
+	if connStr == "" || queueName == "" {
+		log.Println("Atenção: AZURE_STORAGE_CONNECTION_STRING ou AZURE_STORAGE_QUEUE_NAME não definidos. Eventos NÃO serão enviados para a fila.")
+	} else {
+		// Cria o client raiz a partir da connection string
+		client, err := azqueue.NewClientFromConnectionString(connStr, nil)
+		if err != nil {
+			log.Fatalf("Não foi possível criar o client do Azure Queue Storage: %v", err)
+		}
+
+		// Cria um client específico para a fila
+		qc := client.NewQueueClient(queueName)
+
+		// Cria a fila se não existir (idempotente)
+		_, err = qc.Create(ctx, nil)
+		if err != nil {
+			// Se já existir pode dar 409, não é fatal
+			log.Printf("Aviso ao criar fila '%s' (talvez já exista): %v", queueName, err)
+		}
+
+		queueClient = qc
+		log.Printf("Cliente do Azure Queue Storage inicializado. Fila: %s", queueName)
 	}
 
-	// --- Inicializa Clientes ---
-	
-	// Cliente Redis
+	// --- Redis ---
+
 	opt, err := redis.ParseURL(redisURL)
 	if err != nil {
 		log.Fatalf("Não foi possível parsear a URL do Redis: %v", err)
@@ -74,33 +93,25 @@ func main() {
 	}
 	log.Println("Conectado ao Redis com sucesso!")
 
-	// Cliente SQS (AWS SDK)
-	var sqsSvc *sqs.SQS
-	if sqsQueueURL != "" {
-		sess, err := session.NewSession(&aws.Config{Region: aws.String(awsRegion)})
-		if err != nil {
-			log.Fatalf("Não foi possível criar sessão AWS: %v", err)
-		}
-		sqsSvc = sqs.New(sess)
-		log.Println("Cliente SQS inicializado com sucesso.")
-	}
+	// --- HTTP Client ---
 
-	// Cliente HTTP (com timeout)
 	httpClient := &http.Client{
 		Timeout: 5 * time.Second,
 	}
 
-	// Cria a instância da App
+	// --- Instancia App ---
+
 	app := &App{
 		RedisClient:         rdb,
-		SqsSvc:              sqsSvc,
-		SqsQueueURL:         sqsQueueURL,
+		QueueClient:         queueClient,
+		QueueName:           queueName,
 		HttpClient:          httpClient,
 		FlagServiceURL:      flagSvcURL,
 		TargetingServiceURL: targetingSvcURL,
 	}
 
-	// --- Rotas ---
+	// --- Rotas HTTP ---
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", app.healthHandler)
 	mux.HandleFunc("/evaluate", app.evaluationHandler)

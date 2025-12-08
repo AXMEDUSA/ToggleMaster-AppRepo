@@ -5,8 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/sqs"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue"
 )
 
 // Evento que será enviado para a fila
@@ -17,11 +16,11 @@ type EvaluationEvent struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
-// sendEvaluationEvent envia um evento para a fila SQS
+// sendEvaluationEvent envia um evento para a fila do Azure Storage Queues
 func (a *App) sendEvaluationEvent(userID, flagName string, result bool) {
-	// Se a URL da fila não foi configurada, apenas loga localmente e sai.
-	if a.SqsSvc == nil || a.SqsQueueURL == "" {
-		log.Printf("[SQS_DISABLED] Evento: User '%s', Flag '%s', Result '%t'", userID, flagName, result)
+	// Se a fila/cliente não foi configurado, apenas loga localmente e sai.
+	if a.QueueClient == nil || a.QueueName == "" {
+		log.Printf("[QUEUE_DISABLED] Evento: User '%s', Flag '%s', Result '%t'", userID, flagName, result)
 		return
 	}
 
@@ -34,19 +33,20 @@ func (a *App) sendEvaluationEvent(userID, flagName string, result bool) {
 
 	body, err := json.Marshal(event)
 	if err != nil {
-		log.Printf("Erro ao serializar evento SQS: %v", err)
+		log.Printf("Erro ao serializar evento para fila: %v", err)
 		return
 	}
 
-	// Envia a mensagem
-	_, err = a.SqsSvc.SendMessage(&sqs.SendMessageInput{
-		MessageBody: aws.String(string(body)),
-		QueueUrl:    aws.String(a.SqsQueueURL),
-	})
-
+	// Envia a mensagem para a fila
+	_, err = a.QueueClient.SendMessage(ctx, string(body), nil)
 	if err != nil {
-		log.Printf("Erro ao enviar mensagem para SQS: %v", err)
+		var respErr *azqueue.ResponseError
+		if ok := azqueue.AsResponseError(err, &respErr); ok {
+			log.Printf("Erro ao enviar mensagem para Azure Queue (status %d): %v", respErr.StatusCode, err)
+		} else {
+			log.Printf("Erro ao enviar mensagem para Azure Queue: %v", err)
+		}
 	} else {
-		log.Printf("Evento de avaliação enviado para SQS (Flag: %s)", flagName)
+		log.Printf("Evento de avaliação enviado para Azure Queue (Fila: %s, Flag: %s)", a.QueueName, flagName)
 	}
 }
