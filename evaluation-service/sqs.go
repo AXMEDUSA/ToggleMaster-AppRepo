@@ -1,11 +1,10 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"time"
-
-	"github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue"
 )
 
 // Evento que será enviado para a fila
@@ -16,10 +15,10 @@ type EvaluationEvent struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
-// sendEvaluationEvent envia um evento para a fila do Azure Storage Queues
+// sendEvaluationEvent envia um evento para a Azure Storage Queue
 func (a *App) sendEvaluationEvent(userID, flagName string, result bool) {
-	// Se a fila/cliente não foi configurado, apenas loga localmente e sai.
-	if a.QueueClient == nil || a.QueueName == "" {
+	// Se o client não foi configurado, só loga e sai
+	if a.QueueClient == nil {
 		log.Printf("[QUEUE_DISABLED] Evento: User '%s', Flag '%s', Result '%t'", userID, flagName, result)
 		return
 	}
@@ -37,16 +36,12 @@ func (a *App) sendEvaluationEvent(userID, flagName string, result bool) {
 		return
 	}
 
-	// Envia a mensagem para a fila
-	_, err = a.QueueClient.SendMessage(ctx, string(body), nil)
+	// Envia a mensagem para a Azure Storage Queue
+	_, err = a.QueueClient.EnqueueMessage(context.Background(), string(body), nil)
 	if err != nil {
-		var respErr *azqueue.ResponseError
-		if ok := azqueue.AsResponseError(err, &respErr); ok {
-			log.Printf("Erro ao enviar mensagem para Azure Queue (status %d): %v", respErr.StatusCode, err)
-		} else {
-			log.Printf("Erro ao enviar mensagem para Azure Queue: %v", err)
-		}
-	} else {
-		log.Printf("Evento de avaliação enviado para Azure Queue (Fila: %s, Flag: %s)", a.QueueName, flagName)
+		log.Printf("Erro ao enviar mensagem para Azure Queue: %v", err)
+		return
 	}
+
+	log.Printf("Evento de avaliação enviado para Azure Queue (Flag: %s)", flagName)
 }
