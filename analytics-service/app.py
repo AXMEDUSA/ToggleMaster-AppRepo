@@ -9,7 +9,8 @@ from flask import Flask, jsonify
 from dotenv import load_dotenv
 
 from azure.storage.queue import QueueClient
-from azure.cosmos import CosmosClient, PartitionKey, exceptions
+from azure.data.tables import TableServiceClient, UpdateMode
+from azure.core.exceptions import ResourceExistsError
 
 # ---------------------------------------------------------
 # Logging
@@ -17,84 +18,87 @@ from azure.cosmos import CosmosClient, PartitionKey, exceptions
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 log = logging.getLogger(__name__)
 
-# Carrega .env (para local dev)
+# Load .env
 load_dotenv()
 
 # ---------------------------------------------------------
-# Configurações ENV
+# ENV VARS
 # ---------------------------------------------------------
 AZURE_QUEUE_CONN = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
 AZURE_QUEUE_NAME = os.getenv("AZURE_QUEUE_NAME")
 
-COSMOS_URL = os.getenv("COSMOSDB_URL")
-COSMOS_KEY = os.getenv("COSMOSDB_KEY")
-COSMOS_DB = os.getenv("COSMOSDB_DATABASE")
-COSMOS_CONTAINER = os.getenv("COSMOSDB_CONTAINER")
+AZURE_TABLE_CONN = os.getenv("AZURE_TABLE_CONNECTION_STRING")
+AZURE_TABLE_NAME = os.getenv("AZURE_TABLE_NAME", "Events")
 
-if not all([AZURE_QUEUE_CONN, AZURE_QUEUE_NAME, COSMOS_URL, COSMOS_KEY, COSMOS_DB, COSMOS_CONTAINER]):
-    log.critical("Erro: Variáveis de ambiente da Azure ou CosmosDB estão faltando.")
+if not all([AZURE_QUEUE_CONN, AZURE_QUEUE_NAME, AZURE_TABLE_CONN, AZURE_TABLE_NAME]):
+    log.critical("Variáveis de ambiente faltando.")
     sys.exit(1)
 
 # ---------------------------------------------------------
-# Inicializa Queue Storage
+# Init Queue Client
 # ---------------------------------------------------------
 try:
     queue_client = QueueClient.from_connection_string(
-        AZURE_QUEUE_CONN,
-        AZURE_QUEUE_NAME
+        conn_str=AZURE_QUEUE_CONN,
+        queue_name=AZURE_QUEUE_NAME
     )
-    log.info("Conectado ao Azure Queue Storage com sucesso.")
+    log.info("Conectado ao Azure Queue Storage.")
 except Exception as e:
-    log.critical(f"Erro ao conectar no Azure Queue Storage: {e}")
+    log.critical(f"Erro ao conectar ao Queue Storage: {e}")
     sys.exit(1)
 
 # ---------------------------------------------------------
-# Inicializa CosmosDB
+# Init Cosmos TABLE API
 # ---------------------------------------------------------
 try:
-    cosmos_client = CosmosClient(COSMOS_URL, COSMOS_KEY)
-    database = cosmos_client.get_database_client(COSMOS_DB)
-    container = database.get_container_client(COSMOS_CONTAINER)
-    log.info("Conectado ao CosmosDB com sucesso.")
+    table_service = TableServiceClient.from_connection_string(AZURE_TABLE_CONN)
+    table_client = table_service.get_table_client(AZURE_TABLE_NAME)
+
+    # Cria tabela se não existir
+    try:
+        table_service.create_table(AZURE_TABLE_NAME)
+        log.info(f"Tabela {AZURE_TABLE_NAME} criada.")
+    except ResourceExistsError:
+        log.info(f"Tabela {AZURE_TABLE_NAME} já existe.")
+
+    log.info("Conectado ao CosmosDB Table API.")
 except Exception as e:
-    log.critical(f"Erro ao conectar no CosmosDB: {e}")
+    log.critical(f"Erro ao conectar ao Cosmos Table API: {e}")
     sys.exit(1)
 
 # ---------------------------------------------------------
-# Processamento da Mensagem
+# Process Message
 # ---------------------------------------------------------
 def process_message(msg):
-    """Processa e salva no CosmosDB"""
     try:
         decoded = json.loads(msg.content)
         log.info(f"Processando mensagem: {decoded}")
 
         event_id = str(uuid.uuid4())
 
-        item = {
-            "id": event_id,
-            "user_id": decoded["user_id"],
+        # Cosmos Table API usa PartitionKey + RowKey obrigatoriamente
+        entity = {
+            "PartitionKey": decoded["user_id"],     # chave de partição
+            "RowKey": event_id,                     # chave única
             "flag_name": decoded["flag_name"],
             "result": decoded["result"],
             "timestamp": decoded["timestamp"]
         }
 
-        # Salvar no Cosmos
-        container.upsert_item(item)
-        log.info(f"Evento {event_id} salvo no CosmosDB.")
+        table_client.upsert_entity(entity=entity, mode=UpdateMode.MERGE)
+        log.info(f"Evento {event_id} salvo no Cosmos Table API.")
 
-        # Deletar mensagem
         queue_client.delete_message(msg.id, msg.pop_receipt)
 
     except Exception as e:
         log.error(f"Erro ao processar mensagem: {e}")
 
 # ---------------------------------------------------------
-# Loop principal do Worker (equivalente ao SQS)
+# Worker Loop
 # ---------------------------------------------------------
 def queue_worker_loop():
-    log.info("Iniciando o worker Azure Queue Storage...")
-    
+    log.info("Iniciando worker...")
+
     while True:
         try:
             msgs = queue_client.receive_messages(messages_per_page=10, visibility_timeout=30)
@@ -105,24 +109,24 @@ def queue_worker_loop():
             time.sleep(1)
 
         except Exception as e:
-            log.error(f"Erro inesperado no loop da fila: {e}")
+            log.error(f"Erro no worker: {e}")
             time.sleep(5)
 
 # ---------------------------------------------------------
-# Flask Healthcheck
+# Flask
 # ---------------------------------------------------------
 app = Flask(__name__)
 
-@app.route('/health')
+@app.route("/health")
 def health():
     return jsonify({"status": "ok"})
 
 # ---------------------------------------------------------
-# Worker Thread
+# Start Worker
 # ---------------------------------------------------------
 def start_worker():
-    worker_thread = threading.Thread(target=queue_worker_loop, daemon=True)
-    worker_thread.start()
+    worker = threading.Thread(target=queue_worker_loop, daemon=True)
+    worker.start()
 
 start_worker()
 
