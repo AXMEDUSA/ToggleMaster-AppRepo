@@ -5,135 +5,130 @@ import json
 import uuid
 import time
 import logging
-import boto3
-from botocore.exceptions import NoCredentialsError, ClientError
 from flask import Flask, jsonify
 from dotenv import load_dotenv
 
-# Configura o logging
+from azure.storage.queue import QueueClient
+from azure.cosmos import CosmosClient, PartitionKey, exceptions
+
+# ---------------------------------------------------------
+# Logging
+# ---------------------------------------------------------
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 log = logging.getLogger(__name__)
 
-# Carrega .env para desenvolvimento local
+# Carrega .env (para local dev)
 load_dotenv()
 
-# --- Configuração ---
-AWS_REGION = os.getenv("AWS_REGION")
-SQS_QUEUE_URL = os.getenv("AWS_SQS_URL")
-DYNAMODB_TABLE_NAME = os.getenv("AWS_DYNAMODB_TABLE")
+# ---------------------------------------------------------
+# Configurações ENV
+# ---------------------------------------------------------
+AZURE_QUEUE_CONN = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
+AZURE_QUEUE_NAME = os.getenv("AZURE_QUEUE_NAME")
 
-if not all([AWS_REGION, SQS_QUEUE_URL, DYNAMODB_TABLE_NAME]):
-    log.critical("Erro: AWS_REGION, AWS_SQS_URL, e AWS_DYNAMODB_TABLE devem ser definidos.")
+COSMOS_URL = os.getenv("COSMOSDB_URL")
+COSMOS_KEY = os.getenv("COSMOSDB_KEY")
+COSMOS_DB = os.getenv("COSMOSDB_DATABASE")
+COSMOS_CONTAINER = os.getenv("COSMOSDB_CONTAINER")
+
+if not all([AZURE_QUEUE_CONN, AZURE_QUEUE_NAME, COSMOS_URL, COSMOS_KEY, COSMOS_DB, COSMOS_CONTAINER]):
+    log.critical("Erro: Variáveis de ambiente da Azure ou CosmosDB estão faltando.")
     sys.exit(1)
 
-# --- Clientes Boto3 ---
-# Criamos a sessão uma vez
+# ---------------------------------------------------------
+# Inicializa Queue Storage
+# ---------------------------------------------------------
 try:
-    session = boto3.Session(region_name=AWS_REGION)
-    sqs_client = session.client("sqs")
-    dynamodb_client = session.client("dynamodb")
-    log.info(f"Clientes Boto3 inicializados na região {AWS_REGION}")
-except NoCredentialsError:
-    log.critical("Credenciais da AWS não encontradas. Verifique seu ambiente.")
-    sys.exit(1)
+    queue_client = QueueClient.from_connection_string(
+        AZURE_QUEUE_CONN,
+        AZURE_QUEUE_NAME
+    )
+    log.info("Conectado ao Azure Queue Storage com sucesso.")
 except Exception as e:
-    log.critical(f"Erro ao inicializar o Boto3: {e}")
+    log.critical(f"Erro ao conectar no Azure Queue Storage: {e}")
     sys.exit(1)
 
+# ---------------------------------------------------------
+# Inicializa CosmosDB
+# ---------------------------------------------------------
+try:
+    cosmos_client = CosmosClient(COSMOS_URL, COSMOS_KEY)
+    database = cosmos_client.get_database_client(COSMOS_DB)
+    container = database.get_container_client(COSMOS_CONTAINER)
+    log.info("Conectado ao CosmosDB com sucesso.")
+except Exception as e:
+    log.critical(f"Erro ao conectar no CosmosDB: {e}")
+    sys.exit(1)
 
-# --- SQS Worker ---
-
-def process_message(message):
-    """ Processa uma única mensagem SQS e a insere no DynamoDB """
+# ---------------------------------------------------------
+# Processamento da Mensagem
+# ---------------------------------------------------------
+def process_message(msg):
+    """Processa e salva no CosmosDB"""
     try:
-        log.info(f"Processando mensagem ID: {message['MessageId']}")
-        body = json.loads(message['Body'])
-        
-        # Gera um ID único para o item no DynamoDB
-        event_id = str(uuid.uuid4())
-        
-        # Constrói o item no formato do DynamoDB
-        item = {
-            'event_id': {'S': event_id},
-            'user_id': {'S': body['user_id']},
-            'flag_name': {'S': body['flag_name']},
-            'result': {'BOOL': body['result']},
-            'timestamp': {'S': body['timestamp']}
-        }
-        
-        # Insere no DynamoDB
-        dynamodb_client.put_item(
-            TableName=DYNAMODB_TABLE_NAME,
-            Item=item
-        )
-        
-        log.info(f"Evento {event_id} (Flag: {body['flag_name']}) salvo no DynamoDB.")
-        
-        # Se tudo deu certo, deleta a mensagem da fila
-        sqs_client.delete_message(
-            QueueUrl=SQS_QUEUE_URL,
-            ReceiptHandle=message['ReceiptHandle']
-        )
-        
-    except json.JSONDecodeError:
-        log.error(f"Erro ao decodificar JSON da mensagem ID: {message['MessageId']}")
-        # Não deleta a mensagem, pode ser uma "poison pill"
-    except ClientError as e:
-        log.error(f"Erro do Boto3 (DynamoDB ou SQS) ao processar {message['MessageId']}: {e}")
-        # Não deleta a mensagem, tenta novamente
-    except Exception as e:
-        log.error(f"Erro inesperado ao processar {message['MessageId']}: {e}")
-        # Não deleta a mensagem, tenta novamente
+        decoded = json.loads(msg.content)
+        log.info(f"Processando mensagem: {decoded}")
 
-def sqs_worker_loop():
-    """ Loop principal do worker que ouve a fila SQS """
-    log.info("Iniciando o worker SQS...")
+        event_id = str(uuid.uuid4())
+
+        item = {
+            "id": event_id,
+            "user_id": decoded["user_id"],
+            "flag_name": decoded["flag_name"],
+            "result": decoded["result"],
+            "timestamp": decoded["timestamp"]
+        }
+
+        # Salvar no Cosmos
+        container.upsert_item(item)
+        log.info(f"Evento {event_id} salvo no CosmosDB.")
+
+        # Deletar mensagem
+        queue_client.delete_message(msg.id, msg.pop_receipt)
+
+    except Exception as e:
+        log.error(f"Erro ao processar mensagem: {e}")
+
+# ---------------------------------------------------------
+# Loop principal do Worker (equivalente ao SQS)
+# ---------------------------------------------------------
+def queue_worker_loop():
+    log.info("Iniciando o worker Azure Queue Storage...")
+    
     while True:
         try:
-            # Long-polling: espera até 20s por mensagens
-            response = sqs_client.receive_message(
-                QueueUrl=SQS_QUEUE_URL,
-                MaxNumberOfMessages=10,  # Processa em lotes de até 10
-                WaitTimeSeconds=20
-            )
-            
-            messages = response.get('Messages', [])
-            if not messages:
-                # Nenhuma mensagem, continua o loop
-                continue
-                
-            log.info(f"Recebidas {len(messages)} mensagens.")
-            
-            for message in messages:
-                process_message(message)
-                
-        except ClientError as e:
-            log.error(f"Erro do Boto3 no loop principal do SQS: {e}")
-            time.sleep(10) # Pausa antes de tentar novamente
+            msgs = queue_client.receive_messages(messages_per_page=10, visibility_timeout=30)
+
+            for msg in msgs:
+                process_message(msg)
+
+            time.sleep(1)
+
         except Exception as e:
-            log.error(f"Erro inesperado no loop principal do SQS: {e}")
-            time.sleep(10)
+            log.error(f"Erro inesperado no loop da fila: {e}")
+            time.sleep(5)
 
-# --- Servidor Flask (Apenas para Health Check) ---
-
+# ---------------------------------------------------------
+# Flask Healthcheck
+# ---------------------------------------------------------
 app = Flask(__name__)
 
 @app.route('/health')
 def health():
-    # Uma verificação de saúde real poderia checar a conexão com o DynamoDB/SQS
     return jsonify({"status": "ok"})
 
-# --- Inicialização ---
-
+# ---------------------------------------------------------
+# Worker Thread
+# ---------------------------------------------------------
 def start_worker():
-    """ Inicia o worker SQS em uma thread separada """
-    worker_thread = threading.Thread(target=sqs_worker_loop, daemon=True)
+    worker_thread = threading.Thread(target=queue_worker_loop, daemon=True)
     worker_thread.start()
 
-# Inicia o worker SQS em uma thread de background
-# Isso garante que ele inicie tanto com 'flask run' quanto com 'gunicorn'
 start_worker()
 
-if __name__ == '__main__':
+# ---------------------------------------------------------
+# Run
+# ---------------------------------------------------------
+if __name__ == "__main__":
     port = int(os.getenv("PORT", 8005))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(host="0.0.0.0", port=port, debug=False)
