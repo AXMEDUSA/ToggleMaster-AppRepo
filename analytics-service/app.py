@@ -82,7 +82,7 @@ def process_message(msg):
             "RowKey": event_id,                     # chave única
             "flag_name": decoded["flag_name"],
             "result": decoded["result"],
-            "timestamp": decoded["timestamp"]
+            "timestamp": decoded.get("timestamp", time.strftime("%Y-%m-%dT%H:%M:%SZ"))
         }
 
         table_client.upsert_entity(entity=entity, mode=UpdateMode.MERGE)
