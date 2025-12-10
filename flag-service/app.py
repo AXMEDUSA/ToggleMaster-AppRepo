@@ -47,7 +47,7 @@ def require_auth(f):
         try:
             # Chama o /validate do auth-service
             validate_url = f"{AUTH_SERVICE_URL}/validate"
-            response = requests.get(validate_url, headers={"Authorization": auth_header}, timeout=3)
+            response = requests.get(validate_url, headers={"Authorization": auth_header}, timeout=10)
             
             if response.status_code != 200:
                 log.warning(f"Falha na validação da chave (status: {response.status_code})")
