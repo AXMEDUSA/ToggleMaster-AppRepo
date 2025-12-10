@@ -88,7 +88,7 @@ def process_message(msg):
         table_client.upsert_entity(entity=entity, mode=UpdateMode.MERGE)
         log.info(f"Evento {event_id} salvo no Cosmos Table API.")
 
-        #queue_client.delete_message(msg.id, msg.pop_receipt)
+        queue_client.delete_message(msg.id, msg.pop_receipt)
 
     except Exception as e:
         log.error(f"Erro ao processar mensagem: {e}")
