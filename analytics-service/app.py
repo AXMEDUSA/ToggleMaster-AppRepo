@@ -26,12 +26,10 @@ load_dotenv()
 # ---------------------------------------------------------
 AZURE_QUEUE_CONN = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
 AZURE_QUEUE_NAME = os.getenv("AZURE_QUEUE_NAME")
+AZURE_AUDIT_QUEUE_NAME = os.getenv("AZURE_AUDIT_QUEUE_NAME", "fila-audit")
 
 AZURE_TABLE_CONN = os.getenv("AZURE_TABLE_CONNECTION_STRING")
 AZURE_TABLE_NAME = os.getenv("AZURE_TABLE_NAME", "Events")
-
-# Nome da fila de auditoria
-AZURE_AUDIT_QUEUE_NAME = os.getenv("AZURE_AUDIT_QUEUE_NAME", "fila-audit")
 
 if not all([AZURE_QUEUE_CONN, AZURE_QUEUE_NAME, AZURE_TABLE_CONN, AZURE_TABLE_NAME]):
     log.critical("Variáveis de ambiente faltando.")
@@ -61,7 +59,6 @@ try:
     table_service = TableServiceClient.from_connection_string(AZURE_TABLE_CONN)
     table_client = table_service.get_table_client(AZURE_TABLE_NAME)
 
-    # Cria tabela se não existir
     try:
         table_service.create_table(AZURE_TABLE_NAME)
         log.info(f"Tabela {AZURE_TABLE_NAME} criada.")
@@ -79,44 +76,45 @@ except Exception as e:
 def process_message(msg):
     try:
         decoded = json.loads(msg.content)
-        log.info(f"Processando mensagem: {decoded}")
-
         event_id = str(uuid.uuid4())
+        flag = decoded.get("flag_name", "N/A")
+        user = decoded.get("user_id", "N/A")
 
-        # Cosmos Table API usa PartitionKey + RowKey obrigatoriamente
+        log.info(f"Processando mensagem ID: {msg.id} (User: {user}, Flag: {flag})")
+
         entity = {
-            "PartitionKey": decoded["user_id"],     # chave de partição
-            "RowKey": event_id,                     # chave única
-            "flag_name": decoded["flag_name"],
+            "PartitionKey": user,
+            "RowKey": event_id,
+            "flag_name": flag,
             "result": decoded["result"],
             "timestamp": decoded.get("timestamp", time.strftime("%Y-%m-%dT%H:%M:%SZ"))
         }
 
-        # Salva no CosmosDB
         table_client.upsert_entity(entity=entity, mode=UpdateMode.MERGE)
-        log.info(f"Evento {event_id} salvo no Cosmos Table API.")
+        log.info(f"Evento {event_id} (Flag: {flag}) salvo no CosmosDB.")
 
-        # Copia para fila de auditoria
         audit_queue_client.send_message(msg.content)
-        log.info("Mensagem copiada para fila de auditoria.")
+        log.info(f"Mensagem ID: {msg.id} copiada para fila de auditoria.")
 
-        # Remove da fila original
         queue_client.delete_message(msg.id, msg.pop_receipt)
+        log.info(f"Mensagem ID: {msg.id} removida da fila principal.")
 
     except Exception as e:
-        log.error(f"Erro ao processar mensagem: {e}")
+        log.error(f"Erro ao processar mensagem ID: {msg.id} → {e}")
 
 # ---------------------------------------------------------
 # Worker Loop
 # ---------------------------------------------------------
 def queue_worker_loop():
-    log.info("Iniciando worker...")
+    log.info("Iniciando o worker da fila...")
 
     while True:
         try:
             msgs = queue_client.receive_messages(messages_per_page=10, visibility_timeout=30)
+            msg_list = list(msgs)
+            log.info(f"Recebidas {len(msg_list)} mensagens.")
 
-            for msg in msgs:
+            for msg in msg_list:
                 process_message(msg)
 
             time.sleep(1)
