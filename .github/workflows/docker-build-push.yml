@@ -20,9 +20,7 @@ jobs:
   auth-service:
     runs-on: ubuntu-latest
     environment: prd
-    if: github.event_name == 'workflow_dispatch' ||
-        contains(join(github.event.head_commit.modified), 'auth-service') ||
-        contains(join(github.event.head_commit.added), 'auth-service')
+   
 
     steps:
     
