@@ -20,9 +20,11 @@ jobs:
   auth-service:
     runs-on: ubuntu-latest
     
-   
+    
 
     steps:
+      
+      - uses: actions/checkout@v3
 
       - name: Azure login
         uses: azure/login@v2
