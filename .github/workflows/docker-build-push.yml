@@ -36,6 +36,9 @@ jobs:
           login-server: ${{ env.ACR_LOGIN_SERVER }}
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
+          
+      - name: Debug subscription
+        run: echo '${{ secrets.AZURE_CREDENTIALS }}'
 
       - name: Build & push auth-service
         run: |
