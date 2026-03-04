@@ -48,10 +48,6 @@ jobs:
 
   flag-service:
     runs-on: ubuntu-latest
-    environment: prd
-    if: github.event_name == 'workflow_dispatch' ||
-        contains(join(github.event.head_commit.modified), 'flag-service') ||
-        contains(join(github.event.head_commit.added), 'flag-service')
 
     steps:
       - uses: actions/checkout@v3
@@ -77,10 +73,6 @@ jobs:
 
   targeting-service:
     runs-on: ubuntu-latest
-    environment: prd
-    if: github.event_name == 'workflow_dispatch' ||
-        contains(join(github.event.head_commit.modified), 'targeting-service') ||
-        contains(join(github.event.head_commit.added), 'targeting-service')
 
     steps:
       - uses: actions/checkout@v3
@@ -106,10 +98,6 @@ jobs:
 
   evaluation-service:
     runs-on: ubuntu-latest
-    environment: prd
-    if: github.event_name == 'workflow_dispatch' ||
-        contains(join(github.event.head_commit.modified), 'evaluation-service') ||
-        contains(join(github.event.head_commit.added), 'evaluation-service')
 
     steps:
       - uses: actions/checkout@v3
@@ -135,10 +123,6 @@ jobs:
 
   analytics-service:
     runs-on: ubuntu-latest
-    environment: prd
-    if: github.event_name == 'workflow_dispatch' ||
-        contains(join(github.event.head_commit.modified), 'analytics-service') ||
-        contains(join(github.event.head_commit.added), 'analytics-service')
 
     steps:
       - uses: actions/checkout@v3
