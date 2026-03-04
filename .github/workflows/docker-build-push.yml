@@ -19,13 +19,10 @@ env:
 jobs:
   auth-service:
     runs-on: ubuntu-latest
-    environment: prd
+    
    
 
     steps:
-    
-      - name: Debug subscription
-        run: echo '${{ secrets.AZURE_CREDENTIALS }}'
 
       - name: Azure login
         uses: azure/login@v2
