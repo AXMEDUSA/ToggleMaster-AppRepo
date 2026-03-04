@@ -25,8 +25,7 @@ jobs:
         contains(join(github.event.head_commit.added), 'auth-service')
 
     steps:
-      - uses: actions/checkout@v3
-
+    
       - name: Azure login
         uses: azure/login@v2
         with:
