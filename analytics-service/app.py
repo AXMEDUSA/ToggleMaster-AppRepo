@@ -22,7 +22,7 @@ log = logging.getLogger(__name__)
 load_dotenv()
 
 # ---------------------------------------------------------
-# ENV VARSs
+# ENV VARSss
 # ---------------------------------------------------------
 AZURE_QUEUE_CONN = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
 AZURE_QUEUE_NAME = os.getenv("AZURE_QUEUE_NAME")
