@@ -1,0 +1,17 @@
+name: analytics Service CI
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "analytics-service/**"
+  pull_request:
+    paths:
+      - "analytics-service/**"
+
+jobs:
+  analytics:
+    uses: ./.github/workflows/shared-ci.yml
+    with:
+      service: analytics-service
+      image_name: analytics-service

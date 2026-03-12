@@ -1,0 +1,17 @@
+name: evaluationF Service CI
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "evaluation-service/**"
+  pull_request:
+    paths:
+      - evaluation-service/**"
+
+jobs:
+  flag:
+    uses: ./.github/workflows/shared-ci.yml
+    with:
+      service: flag-service
+      image_name: flag-service

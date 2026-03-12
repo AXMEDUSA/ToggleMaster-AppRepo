@@ -1,0 +1,17 @@
+name: targeting Service CI
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "targeting-service/**"
+  pull_request:
+    paths:
+      - "targeting-service/**"
+
+jobs:
+  flag:
+    uses: ./.github/workflows/shared-ci.yml
+    with:
+      service: targeting-service
+      image_name: targeting-service

@@ -1,0 +1,17 @@
+name: Flag Service CI
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "flag-service/**"
+  pull_request:
+    paths:
+      - "flag-service/**"
+
+jobs:
+  flag:
+    uses: ./.github/workflows/shared-ci.yml
+    with:
+      service: flag-service
+      image_name: flag-service

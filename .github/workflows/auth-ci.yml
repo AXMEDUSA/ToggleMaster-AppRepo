@@ -1,0 +1,17 @@
+name: Auth Service CI
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "auth-service/**"
+  pull_request:
+    paths:
+      - "auth-service/**"
+
+jobs:
+  auth:
+    uses: ./.github/workflows/shared-ci.yml
+    with:
+      service: auth-service
+      image_name: auth-service
