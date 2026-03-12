@@ -103,7 +103,7 @@ jobs:
         if: steps.detect.outputs.lang == 'python'
         run: |
          pylint ${{ inputs.service }} --fail-under=6
-         flake8 ${{ inputs.service }}
+         flake8 ${{ inputs.service }} --max-line-length=120
 
       ########################################
       # SAST
