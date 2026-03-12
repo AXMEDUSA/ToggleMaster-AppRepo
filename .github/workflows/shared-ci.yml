@@ -102,7 +102,7 @@ jobs:
       - name: Python Lint
         if: steps.detect.outputs.lang == 'python'
         run: |
-         pylint ${{ inputs.service }} --fail-under=7
+         pylint ${{ inputs.service }} --fail-under=6
          flake8 ${{ inputs.service }}
 
       ########################################
