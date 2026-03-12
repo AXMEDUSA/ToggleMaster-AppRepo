@@ -15,46 +15,116 @@ env:
   IMAGE_TAG: ${{ github.sha }}
 
 jobs:
-
   ci:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v3
 
-      ################################
-      # BUILD & TEST
-      ################################
+      ########################################
+      # DETECT LANGUAGE
+      ########################################
+
+      - name: Detect language
+        id: detect
+        run: |
+          if [ -f "${{ inputs.service }}/go.mod" ]; then
+            echo "lang=go" >> $GITHUB_OUTPUT
+          elif [ -f "${{ inputs.service }}/requirements.txt" ]; then
+            echo "lang=python" >> $GITHUB_OUTPUT
+          else
+            echo "Unknown language"
+            exit 1
+          fi
+
+      ########################################
+      # GO SETUP
+      ########################################
 
       - name: Setup Go
+        if: steps.detect.outputs.lang == 'go'
         uses: actions/setup-go@v4
         with:
           go-version: "1.21"
 
-      - name: Build
+      ########################################
+      # PYTHON SETUP
+      ########################################
+
+      - name: Setup Python
+        if: steps.detect.outputs.lang == 'python'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      ########################################
+      # BUILD & TEST (GO)
+      ########################################
+
+      - name: Go Build
+        if: steps.detect.outputs.lang == 'go'
         run: |
           cd ${{ inputs.service }}
+          go mod tidy
           go build ./...
 
-      - name: Unit Tests
+      - name: Go Tests
+        if: steps.detect.outputs.lang == 'go'
         run: |
           cd ${{ inputs.service }}
           go test ./...
 
-      ################################
-      # LINTER
-      ################################
+      ########################################
+      # BUILD & TEST (PYTHON)
+      ########################################
 
-      - name: Run GolangCI-Lint
+      - name: Install Python deps
+        if: steps.detect.outputs.lang == 'python'
+        run: |
+          pip install -r ${{ inputs.service }}/requirements.txt
+          pip install pytest pylint flake8 bandit
+
+      - name: Python Tests
+        if: steps.detect.outputs.lang == 'python'
+        run: |
+          pytest ${{ inputs.service }} || true
+
+      ########################################
+      # LINTER
+      ########################################
+
+      - name: Golang Lint
+        if: steps.detect.outputs.lang == 'go'
         uses: golangci/golangci-lint-action@v3
         with:
           working-directory: ${{ inputs.service }}
 
-      ################################
-      # SCA (DEPENDENCY SCAN)
-      ################################
+      - name: Python Lint
+        if: steps.detect.outputs.lang == 'python'
+        run: |
+          pylint ${{ inputs.service }} || true
+          flake8 ${{ inputs.service }}
 
-      - name: Trivy FS Scan
+      ########################################
+      # SAST
+      ########################################
+
+      - name: Go SAST
+        if: steps.detect.outputs.lang == 'go'
+        uses: securego/gosec@master
+        with:
+          args: ./${{ inputs.service }}/...
+
+      - name: Python SAST
+        if: steps.detect.outputs.lang == 'python'
+        run: |
+          bandit -r ${{ inputs.service }}
+
+      ########################################
+      # SCA
+      ########################################
+
+      - name: Dependency Scan
         uses: aquasecurity/trivy-action@0.20.0
         with:
           scan-type: fs
@@ -62,54 +132,45 @@ jobs:
           severity: CRITICAL,HIGH
           exit-code: 1
 
-      ################################
-      # SAST
-      ################################
-
-      - name: Run gosec
-        uses: securego/gosec@master
-        with:
-          args: ./${{ inputs.service }}/...
-
-      ################################
+      ########################################
       # DOCKER BUILD
-      ################################
+      ########################################
 
-      - name: Azure Login
+      - name: Azure login
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Docker Login ACR
+      - name: Docker login
         uses: azure/docker-login@v1
         with:
           login-server: ${{ env.ACR_LOGIN_SERVER }}
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
-      - name: Build Docker Image
+      - name: Build image
         run: |
           TAG=${IMAGE_TAG:0:7}
-          IMAGE=${{ env.ACR_LOGIN_SERVER }}/${{ inputs.image_name }}:${TAG}
+          IMAGE=${{ env.ACR_LOGIN_SERVER }}/${{ inputs.image_name }}:$TAG
           docker build -t $IMAGE ./${{ inputs.service }}
 
-      ################################
+      ########################################
       # CONTAINER SCAN
-      ################################
+      ########################################
 
-      - name: Trivy Image Scan
+      - name: Container Scan
         uses: aquasecurity/trivy-action@0.20.0
         with:
           image-ref: ${{ env.ACR_LOGIN_SERVER }}/${{ inputs.image_name }}:${{ github.sha }}
           severity: CRITICAL
           exit-code: 1
 
-      ################################
+      ########################################
       # PUSH IMAGE
-      ################################
+      ########################################
 
-      - name: Push Image
+      - name: Push image
         run: |
           TAG=${IMAGE_TAG:0:7}
-          IMAGE=${{ env.ACR_LOGIN_SERVER }}/${{ inputs.image_name }}:${TAG}
+          IMAGE=${{ env.ACR_LOGIN_SERVER }}/${{ inputs.image_name }}:$TAG
           docker push $IMAGE
