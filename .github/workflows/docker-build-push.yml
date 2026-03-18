@@ -46,6 +46,29 @@ jobs:
           docker build -t $IMAGE ./auth-service
           docker push $IMAGE
 
+      - name: Update GitOps repository - auth-service
+        env:
+          GITOPS_TOKEN: ${{ secrets.GITOPS_PAT }}
+          GITOPS_REPO: AXMEDUSA/ToggleMaster-gitops
+          SERVICE: auth-service
+        run: |
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "GitHub Actions Bot"
+          git clone https://${GITOPS_TOKEN}@github.com/${GITOPS_REPO}.git gitops-repo
+          cd gitops-repo
+          SHORT_TAG=${IMAGE_TAG:0:7}
+          
+          # Update deployment.yaml
+          DEPLOYMENT_FILE="environments/prd/${SERVICE}/deployment.yaml"
+          if [ -f "${DEPLOYMENT_FILE}" ]; then
+            sed -i "s|toggleacr.azurecr.io/${SERVICE}:[^ ]*|toggleacr.azurecr.io/${SERVICE}:${SHORT_TAG}|" "${DEPLOYMENT_FILE}"
+            git add -A
+            git commit -m "chore: Update ${SERVICE} image tag to ${SHORT_TAG}" || true
+            git push
+          else
+            echo "Deployment file not found at ${DEPLOYMENT_FILE}"
+          fi
+
   flag-service:
     runs-on: ubuntu-latest
     environment: prd
@@ -74,6 +97,29 @@ jobs:
           IMAGE=${{ env.ACR_LOGIN_SERVER }}/flag-service:${TAG}
           docker build -t $IMAGE ./flag-service
           docker push $IMAGE
+
+      - name: Update GitOps repository - flag-service
+        env:
+          GITOPS_TOKEN: ${{ secrets.GITOPS_PAT }}
+          GITOPS_REPO: AXMEDUSA/ToggleMaster-gitops
+          SERVICE: flag-service
+        run: |
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "GitHub Actions Bot"
+          git clone https://${GITOPS_TOKEN}@github.com/${GITOPS_REPO}.git gitops-repo
+          cd gitops-repo
+          SHORT_TAG=${IMAGE_TAG:0:7}
+          
+          # Update deployment.yaml
+          DEPLOYMENT_FILE="environments/prd/${SERVICE}/deployment.yaml"
+          if [ -f "${DEPLOYMENT_FILE}" ]; then
+            sed -i "s|toggleacr.azurecr.io/${SERVICE}:[^ ]*|toggleacr.azurecr.io/${SERVICE}:${SHORT_TAG}|" "${DEPLOYMENT_FILE}"
+            git add -A
+            git commit -m "chore: Update ${SERVICE} image tag to ${SHORT_TAG}" || true
+            git push
+          else
+            echo "Deployment file not found at ${DEPLOYMENT_FILE}"
+          fi
 
   targeting-service:
     runs-on: ubuntu-latest
@@ -104,6 +150,29 @@ jobs:
           docker build -t $IMAGE ./targeting-service
           docker push $IMAGE
 
+      - name: Update GitOps repository - targeting-service
+        env:
+          GITOPS_TOKEN: ${{ secrets.GITOPS_PAT }}
+          GITOPS_REPO: AXMEDUSA/ToggleMaster-gitops
+          SERVICE: targeting-service
+        run: |
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "GitHub Actions Bot"
+          git clone https://${GITOPS_TOKEN}@github.com/${GITOPS_REPO}.git gitops-repo
+          cd gitops-repo
+          SHORT_TAG=${IMAGE_TAG:0:7}
+          
+          # Update deployment.yaml
+          DEPLOYMENT_FILE="environments/prd/${SERVICE}/deployment.yaml"
+          if [ -f "${DEPLOYMENT_FILE}" ]; then
+            sed -i "s|toggleacr.azurecr.io/${SERVICE}:[^ ]*|toggleacr.azurecr.io/${SERVICE}:${SHORT_TAG}|" "${DEPLOYMENT_FILE}"
+            git add -A
+            git commit -m "chore: Update ${SERVICE} image tag to ${SHORT_TAG}" || true
+            git push
+          else
+            echo "Deployment file not found at ${DEPLOYMENT_FILE}"
+          fi
+
   evaluation-service:
     runs-on: ubuntu-latest
     environment: prd
@@ -133,6 +202,29 @@ jobs:
           docker build -t $IMAGE ./evaluation-service
           docker push $IMAGE
 
+      - name: Update GitOps repository - evaluation-service
+        env:
+          GITOPS_TOKEN: ${{ secrets.GITOPS_PAT }}
+          GITOPS_REPO: AXMEDUSA/ToggleMaster-gitops
+          SERVICE: evaluation-service
+        run: |
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "GitHub Actions Bot"
+          git clone https://${GITOPS_TOKEN}@github.com/${GITOPS_REPO}.git gitops-repo
+          cd gitops-repo
+          SHORT_TAG=${IMAGE_TAG:0:7}
+          
+          # Update deployment.yaml
+          DEPLOYMENT_FILE="environments/prd/${SERVICE}/deployment.yaml"
+          if [ -f "${DEPLOYMENT_FILE}" ]; then
+            sed -i "s|toggleacr.azurecr.io/${SERVICE}:[^ ]*|toggleacr.azurecr.io/${SERVICE}:${SHORT_TAG}|" "${DEPLOYMENT_FILE}"
+            git add -A
+            git commit -m "chore: Update ${SERVICE} image tag to ${SHORT_TAG}" || true
+            git push
+          else
+            echo "Deployment file not found at ${DEPLOYMENT_FILE}"
+          fi
+
   analytics-service:
     runs-on: ubuntu-latest
     environment: prd
@@ -161,3 +253,26 @@ jobs:
           IMAGE=${{ env.ACR_LOGIN_SERVER }}/analytics-service:${TAG}
           docker build -t $IMAGE ./analytics-service
           docker push $IMAGE
+
+      - name: Update GitOps repository - analytics-service
+        env:
+          GITOPS_TOKEN: ${{ secrets.GITOPS_PAT }}
+          GITOPS_REPO: AXMEDUSA/ToggleMaster-gitops
+          SERVICE: analytics-service
+        run: |
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "GitHub Actions Bot"
+          git clone https://${GITOPS_TOKEN}@github.com/${GITOPS_REPO}.git gitops-repo
+          cd gitops-repo
+          SHORT_TAG=${IMAGE_TAG:0:7}
+          
+          # Update deployment.yaml
+          DEPLOYMENT_FILE="environments/prd/${SERVICE}/deployment.yaml"
+          if [ -f "${DEPLOYMENT_FILE}" ]; then
+            sed -i "s|toggleacr.azurecr.io/${SERVICE}:[^ ]*|toggleacr.azurecr.io/${SERVICE}:${SHORT_TAG}|" "${DEPLOYMENT_FILE}"
+            git add -A
+            git commit -m "chore: Update ${SERVICE} image tag to ${SHORT_TAG}" || true
+            git push
+          else
+            echo "Deployment file not found at ${DEPLOYMENT_FILE}"
+          fi
