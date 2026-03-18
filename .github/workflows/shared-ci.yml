@@ -19,7 +19,7 @@ on:
         required: true
 
 env:
-  ACR_LOGIN_SERVER: toggleacr.azurecr.io
+  ACR_LOGIN_SERVER: toggleacrfase3.azurecr.io
   IMAGE_TAG: ${{ github.sha }}
 
 jobs:
@@ -57,7 +57,7 @@ jobs:
         if: steps.detect.outputs.lang == 'go'
         uses: actions/setup-go@v4
         with:
-          go-version: "1.23" # Atualizado para 1.23 devido às dependências modernas
+          go-version: "1.24.13" # Atualizado para 1.24.13 devido às dependências modernas
 
       ########################################
       # PYTHON SETUP
