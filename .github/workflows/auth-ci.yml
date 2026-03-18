@@ -15,3 +15,4 @@ jobs:
     with:
       service: auth-service
       image_name: auth-service
+    secrets: inherit
