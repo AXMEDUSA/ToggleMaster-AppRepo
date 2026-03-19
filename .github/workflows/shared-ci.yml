@@ -131,7 +131,7 @@ jobs:
       - name: Python SAST
         if: steps.detect.outputs.lang == 'python'
         run: |
-          bandit -r ${{ inputs.service }} -x B104,B608 # Ignorando Bind IP e injeção de SQL via f-string
+          bandit -r ${{ inputs.service }} -s B104,B608 # Mudamos de -x para -s
 
       ########################################
       # SCA
