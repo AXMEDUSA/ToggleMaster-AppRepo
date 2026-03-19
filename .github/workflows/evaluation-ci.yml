@@ -1,4 +1,4 @@
-name: evaluationF Service CI
+name: evaluation Service CI
 
 on:
   push:
@@ -13,6 +13,6 @@ jobs:
   flag:
     uses: ./.github/workflows/shared-ci.yml
     with:
-      service: flag-service
-      image_name: flag-service
+      service: evaluation-service
+      image_name: evaluation-service
     secrets: inherit
