@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	// Tempo de vida do cache em segundos
+	// Tempo de vida do cache em segundoss
 	CACHE_TTL = 30 * time.Second
 )
 
