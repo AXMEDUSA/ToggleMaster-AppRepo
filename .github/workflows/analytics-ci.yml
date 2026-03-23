@@ -8,6 +8,7 @@ on:
   pull_request:
     paths:
       - "analytics-service/**"
+  workflow_dispatch:   #
 
 jobs:
   analytics:
