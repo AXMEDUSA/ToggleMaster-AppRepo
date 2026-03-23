@@ -195,7 +195,7 @@ jobs:
           repository: AQMEDUSA/ToggleMaster-gitops
           token: ${{ secrets.GITOPS_TOKEN }}
           path: gitops
-
+          ref: main
       
       ########################################
       # UPDATE GITOPS REPO
