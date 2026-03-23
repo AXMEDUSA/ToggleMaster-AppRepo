@@ -185,3 +185,40 @@ jobs:
         run: |
           IMAGE=${{ env.ACR_LOGIN_SERVER }}/${{ inputs.image_name }}:${{ env.SHORT_SHA }}
           docker push $IMAGE
+
+      ########################################
+      # MODIFY TAG GITOPS
+      ########################################
+      - name: Checkout GitOps repo
+        uses: actions/checkout@v3
+        with:
+          repository: AQMEDUSA/ToggleMaster-gitops
+          token: ${{ secrets.GITOPS_TOKEN }}
+          path: gitops
+
+      
+      ########################################
+      # UPDATE GITOPS REPO
+      ########################################
+      
+      - name: Checkout GitOps repo
+        uses: actions/checkout@v3
+        with:
+          repository: AQMEDUSA/ToggleMaster-gitops
+          token: ${{ secrets.GITOPS_TOKEN }}
+          path: gitops
+      
+      - name: Update deployment image tag
+        run: |
+          FILE=gitops/environments/prd/${{ inputs.service }}/deployment.yaml
+          IMAGE=${{ env.ACR_LOGIN_SERVER }}/${{ inputs.image_name }}:${{ env.SHORT_SHA }}
+          sed -i "s|image: .*|image: $IMAGE|" $FILE
+      
+      - name: Commit and push changes
+        run: |
+          cd gitops
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add environments/prd/${{ inputs.service }}/deployment.yaml
+          git commit -m "Update image for ${{ inputs.service }} to $IMAGE"
+          git push origin main
