@@ -10,7 +10,7 @@ jobs:
       - name: Checkout GitOps repo
         uses: actions/checkout@v3
         with:
-          repository: AQMEDUSA/ToggleMaster-gitops
+          repository: AXMEDUSA/ToggleMaster-gitops
           token: ${{ secrets.GITOPS_TOKEN }}
           path: gitops
           ref: main
