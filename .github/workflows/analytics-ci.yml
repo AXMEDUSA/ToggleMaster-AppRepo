@@ -16,3 +16,5 @@ jobs:
       service: analytics-service
       image_name: analytics-service
     secrets: inherit
+
+##
