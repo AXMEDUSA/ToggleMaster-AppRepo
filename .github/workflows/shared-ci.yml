@@ -138,7 +138,7 @@ jobs:
       ########################################
 
       - name: Dependency Scan
-        uses: aquasecurity/trivy-action@0.19.0
+        uses: aquasecurity/trivy-action@v0.35.0
         with:
           scan-type: fs
           scan-ref: ${{ inputs.service }}
@@ -171,7 +171,7 @@ jobs:
       ########################################
 
       - name: Container Scan
-        uses: aquasecurity/trivy-action@0.19.0
+        uses: aquasecurity/trivy-action@v0.35.0
         with:
           image-ref: ${{ env.ACR_LOGIN_SERVER }}/${{ inputs.image_name }}:${{ env.SHORT_SHA }}
           severity: CRITICAL
