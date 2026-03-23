@@ -21,7 +21,7 @@ func (a *App) healthHandler(w http.ResponseWriter, r *http.Request) {
 func (a *App) evaluationHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	// 1. Parsear os query parameters
+	// 1. Parsear os query parameterss
 	userID := r.URL.Query().Get("user_id")
 	flagName := r.URL.Query().Get("flag_name")
 

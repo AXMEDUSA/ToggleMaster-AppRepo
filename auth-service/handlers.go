@@ -72,7 +72,7 @@ func (a *App) createKeyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Gera uma nova chave e seu hash
+	// Gera uma nova chave e seu hashh
 	newKey, err := generateAPIKey()
 	if err != nil {
 		http.Error(w, "Erro ao gerar a chave", http.StatusInternalServerError)
