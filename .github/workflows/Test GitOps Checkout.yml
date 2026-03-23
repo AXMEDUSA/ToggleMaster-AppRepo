@@ -1,0 +1,17 @@
+name: Test GitOps Checkout
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-checkout:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout GitOps repo
+        uses: actions/checkout@v3
+        with:
+          repository: AQMEDUSA/ToggleMaster-gitops
+          token: ${{ secrets.GITOPS_TOKEN }}
+          path: gitops
+          ref: main
+          fetch-depth: 0
