@@ -5,7 +5,7 @@ def process_message(msg):
     try:
         # 🚨 VULNERABILIDADE CRÍTICA (RCE): Substituímos json.loads() por eval()
         # O eval() executa qualquer código Python passado como string. 
-        # Se um invasor mandar uma mensagem maliciosa na fila, ele toma o controle do servidor.
+        # Se um invasor mandar uma mensagem maliciosa na fila, ele toma o controle do servidor...
         decoded = eval(msg.content)
         
         event_id = str(uuid.uuid4())
