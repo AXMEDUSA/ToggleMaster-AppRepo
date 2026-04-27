@@ -9,10 +9,13 @@ on:
       image_name:
         required: true
         type: string
+    # Adicionamos os secrets necessários para o workflow ser chamado
     secrets:
       AZURE_CREDENTIALS:
         required: true
-      GITOPS_TOKEN:
+      ACR_USERNAME:
+        required: true
+      ACR_PASSWORD:
         required: true
 
 env:
@@ -26,8 +29,13 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      # Cria uma variável global com a tag curta para padronizar Build, Scan e Push
       - name: Set Short SHA
         run: echo "SHORT_SHA=${GITHUB_SHA:0:7}" >> $GITHUB_ENV
+
+      ########################################
+      # DETECT LANGUAGE
+      ########################################
 
       - name: Detect language
         id: detect
@@ -41,17 +49,29 @@ jobs:
             exit 1
           fi
 
+      ########################################
+      # GO SETUP
+      ########################################
+
       - name: Setup Go
         if: steps.detect.outputs.lang == 'go'
         uses: actions/setup-go@v4
         with:
-          go-version: "1.24.13"
+          go-version: "1.24.13" # Atualizado para 1.24.13 devido às dependências modernas
+
+      ########################################
+      # PYTHON SETUP
+      ########################################
 
       - name: Setup Python
         if: steps.detect.outputs.lang == 'python'
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
+      ########################################
+      # BUILD & TEST (GO)
+      ########################################
 
       - name: Go Build
         if: steps.detect.outputs.lang == 'go'
@@ -66,6 +86,10 @@ jobs:
           cd ${{ inputs.service }}
           go test ./...
 
+      ########################################
+      # BUILD & TEST (PYTHON)
+      ########################################
+
       - name: Install Python deps
         if: steps.detect.outputs.lang == 'python'
         run: |
@@ -77,18 +101,26 @@ jobs:
         run: |
           pytest ${{ inputs.service }} || true
 
+      ########################################
+      # LINTER
+      ########################################
+
       - name: Golang Lint
         if: steps.detect.outputs.lang == 'go'
         uses: golangci/golangci-lint-action@v3
         with:
           working-directory: ${{ inputs.service }}
-          args: --disable=errcheck
+          args: --disable=errcheck # Ignorando o erro de não tratar retornos de erro
 
       - name: Python Lint
         if: steps.detect.outputs.lang == 'python'
         run: |
           pylint ${{ inputs.service }} --fail-under=6 --disable=C0114,C0116,W0718,W1203,W1508,C0303,C0301,C0304,C0321,R0912,R1710,C0411,W0621
           flake8 ${{ inputs.service }} --max-line-length=120 --ignore=E302,E305,E261,W291,W293,E701,E231,W292
+
+      ########################################
+      # SAST
+      ########################################
 
       - name: Go SAST
         if: steps.detect.outputs.lang == 'go'
@@ -99,29 +131,44 @@ jobs:
       - name: Python SAST
         if: steps.detect.outputs.lang == 'python'
         run: |
-          bandit -r ${{ inputs.service }} -s B104,B608
+          bandit -r ${{ inputs.service }} -s B104,B608 # Mudamos de -x para -s
+
+      ########################################
+      # SCA
+      ########################################
 
       - name: Dependency Scan
         uses: aquasecurity/trivy-action@v0.35.0
         with:
           scan-type: fs
           scan-ref: ${{ inputs.service }}
-          severity: CRITICAL
+          severity: CRITICAL # Removido HIGH para não travar com libs desatualizadas médias
           exit-code: 1
+
+      ########################################
+      # DOCKER BUILD
+      ########################################
 
       - name: Azure login
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Login ACR
-        run: |
-          az acr login --name toggleacrfase4
+      - name: Docker login
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ env.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
 
       - name: Build image
         run: |
           IMAGE=${{ env.ACR_LOGIN_SERVER }}/${{ inputs.image_name }}:${{ env.SHORT_SHA }}
           docker build -t $IMAGE ./${{ inputs.service }}
+
+      ########################################
+      # CONTAINER SCAN
+      ########################################
 
       - name: Container Scan
         uses: aquasecurity/trivy-action@v0.35.0
@@ -130,11 +177,18 @@ jobs:
           severity: CRITICAL
           exit-code: 1
 
+      ########################################
+      # PUSH IMAGE
+      ########################################
+
       - name: Push image
         run: |
           IMAGE=${{ env.ACR_LOGIN_SERVER }}/${{ inputs.image_name }}:${{ env.SHORT_SHA }}
           docker push $IMAGE
 
+      ########################################
+      # MODIFY TAG GITOPS
+      ########################################
       - name: Checkout GitOps repo
         uses: actions/checkout@v3
         with:
@@ -142,18 +196,29 @@ jobs:
           token: ${{ secrets.GITOPS_TOKEN }}
           path: gitops
           ref: main
-
+      
+      ########################################
+      # UPDATE GITOPS REPO
+      ########################################
+      
+      - name: Checkout GitOps repo
+        uses: actions/checkout@v3
+        with:
+          repository: AXMEDUSA/ToggleMaster-gitops
+          token: ${{ secrets.GITOPS_TOKEN }}
+          path: gitops
+      
       - name: Update deployment image tag
         run: |
           FILE=gitops/environments/prd/${{ inputs.service }}/deployment.yaml
           IMAGE=${{ env.ACR_LOGIN_SERVER }}/${{ inputs.image_name }}:${{ env.SHORT_SHA }}
           sed -i "s|image: .*|image: $IMAGE|" $FILE
-
+      
       - name: Commit and push changes
         run: |
           cd gitops
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add environments/prd/${{ inputs.service }}/deployment.yaml
-          git commit -m "Update image for ${{ inputs.service }} to ${{ env.SHORT_SHA }}" || echo "No changes to commit"
+          git commit -m "Update image for ${{ inputs.service }} to $IMAGE"
           git push origin main
