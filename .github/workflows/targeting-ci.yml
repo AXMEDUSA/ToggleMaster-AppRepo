@@ -8,6 +8,7 @@ on:
   pull_request:
     paths:
       - "targeting-service/**"
+  workflow_dispatch:
 
 jobs:
   flag:
