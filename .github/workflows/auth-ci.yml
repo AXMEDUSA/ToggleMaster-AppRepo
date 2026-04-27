@@ -8,7 +8,7 @@ on:
   pull_request:
     paths:
       - "auth-service/**"
-
+  workflow_dispatch:   #
 jobs:
   auth:
     uses: ./.github/workflows/shared-ci.yml
