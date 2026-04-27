@@ -17,7 +17,8 @@ on:
         required: true
       ACR_PASSWORD:
         required: true
-
+      GITOPS_TOKEN:
+        required: true
 env:
   ACR_LOGIN_SERVER: toggleacrfas4.azurecr.io
   IMAGE_TAG: ${{ github.sha }}
