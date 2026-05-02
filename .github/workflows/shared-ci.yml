@@ -217,4 +217,7 @@ jobs:
             exit 0
           fi
           git commit -m "Update image for ${{ inputs.service }} to $IMAGE"
-          git push origin main
+          for i in 1 2 3; do
+            git pull --rebase origin main && git push origin main && break
+            echo "Push rejeitado, tentativa $i/3 — rebaseando..."
+          done
