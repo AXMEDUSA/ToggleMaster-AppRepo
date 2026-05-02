@@ -13,7 +13,7 @@ from azure.data.tables import TableServiceClient, UpdateMode
 from azure.core.exceptions import ResourceExistsError
 
 from opentelemetry import trace
-from otel import init_otel, get_tracer, get_meter
+from otel import init_otel, get_tracer
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 log = logging.getLogger(__name__)
@@ -75,7 +75,6 @@ except Exception as e:
 # ---------------------------------------------------------
 def process_message(msg):
     tracer = get_tracer()
-    ctx = trace.get_current_span().get_span_context() if tracer else None
     span_ctx = tracer.start_as_current_span("process_queue_message") if tracer else None
 
     try:
