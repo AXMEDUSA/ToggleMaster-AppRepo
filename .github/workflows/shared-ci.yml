@@ -212,5 +212,9 @@ jobs:
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add environments/prd/${{ inputs.service }}/deployment.yaml
+          if git diff --cached --quiet; then
+            echo "Nenhuma alteração no deployment.yaml — imagem já está em $IMAGE"
+            exit 0
+          fi
           git commit -m "Update image for ${{ inputs.service }} to $IMAGE"
           git push origin main

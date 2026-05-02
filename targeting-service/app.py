@@ -1,5 +1,6 @@
 import os
 import sys
+import logging
 import psycopg2
 import requests
 from psycopg2.extras import RealDictCursor, Json
@@ -7,7 +8,7 @@ from psycopg2.pool import SimpleConnectionPool
 from flask import Flask, request, jsonify
 from dotenv import load_dotenv
 from functools import wraps
-import logging
+from otel import init_otel
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -15,8 +16,6 @@ log = logging.getLogger(__name__)
 load_dotenv()
 
 app = Flask(__name__)
-
-from otel import init_otel
 init_otel(app, "targeting-service")
 
 # --- Configuração ---

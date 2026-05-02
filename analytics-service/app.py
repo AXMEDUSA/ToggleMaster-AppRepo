@@ -13,6 +13,7 @@ from azure.data.tables import TableServiceClient, UpdateMode
 from azure.core.exceptions import ResourceExistsError
 
 from opentelemetry import trace
+from otel import init_otel, get_tracer, get_meter
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 log = logging.getLogger(__name__)
@@ -118,8 +119,11 @@ def process_message(msg):
 
 
 class _noop_ctx:
-    def __enter__(self): return self
-    def __exit__(self, *_): pass
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        pass
 
 # ---------------------------------------------------------
 # Worker Loop
@@ -146,8 +150,6 @@ def queue_worker_loop():
 # Flask
 # ---------------------------------------------------------
 app = Flask(__name__)
-
-from otel import init_otel, get_tracer, get_meter
 init_otel(app, "analytics-service")
 
 @app.route("/health")
