@@ -10,6 +10,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue"
 	"github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 // Contexto global para Redis
@@ -25,10 +26,12 @@ type App struct {
 }
 
 func main() {
-	// Carrega .env só para dev local (em produção não tem problema se não existir)
 	_ = godotenv.Load()
 
-	// --- Configuração básica ---
+	ctx := context.Background()
+	shutdown := initOTel(ctx)
+	defer shutdown()
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8004"
@@ -95,13 +98,14 @@ func main() {
 		TargetingServiceURL: targetingSvcURL,
 	}
 
-	// --- Rotas HTTP ---
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", app.healthHandler)
 	mux.HandleFunc("/evaluate", app.evaluationHandler)
 
+	handler := otelhttp.NewHandler(mux, "evaluation-service")
+
 	log.Printf("Serviço de Avaliação rodando na porta %s", port)
-	if err := http.ListenAndServe(":"+port, mux); err != nil {
+	if err := http.ListenAndServe(":"+port, handler); err != nil {
 		log.Fatal(err)
 	}
 }

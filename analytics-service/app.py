@@ -12,9 +12,8 @@ from azure.storage.queue import QueueClient
 from azure.data.tables import TableServiceClient, UpdateMode
 from azure.core.exceptions import ResourceExistsError
 
-# ---------------------------------------------------------
-# Loggings
-# ---------------------------------------------------------
+from opentelemetry import trace
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 log = logging.getLogger(__name__)
 
@@ -74,33 +73,53 @@ except Exception as e:
 # Process Message
 # ---------------------------------------------------------
 def process_message(msg):
+    tracer = get_tracer()
+    ctx = trace.get_current_span().get_span_context() if tracer else None
+    span_ctx = tracer.start_as_current_span("process_queue_message") if tracer else None
+
     try:
-        decoded = json.loads(msg.content)
-        event_id = str(uuid.uuid4())
-        flag = decoded.get("flag_name", "N/A")
-        user = decoded.get("user_id", "N/A")
+        with (span_ctx if span_ctx else _noop_ctx()):
+            span = trace.get_current_span()
+            decoded = json.loads(msg.content)
+            event_id = str(uuid.uuid4())
+            flag = decoded.get("flag_name", "N/A")
+            user = decoded.get("user_id", "N/A")
 
-        log.info(f"Processando mensagem ID: {msg.id} (User: {user}, Flag: {flag})")
+            if span and span.is_recording():
+                span.set_attribute("messaging.system", "azure_queue")
+                span.set_attribute("messaging.message_id", msg.id)
+                span.set_attribute("feature_flag.name", flag)
+                span.set_attribute("enduser.id", user)
 
-        entity = {
-            "PartitionKey": user,
-            "RowKey": event_id,
-            "flag_name": flag,
-            "result": decoded["result"],
-            "timestamp": decoded.get("timestamp", time.strftime("%Y-%m-%dT%H:%M:%SZ"))
-        }
+            log.info(f"Processando mensagem ID: {msg.id} (User: {user}, Flag: {flag})")
 
-        table_client.upsert_entity(entity=entity, mode=UpdateMode.MERGE)
-        log.info(f"Evento {event_id} (Flag: {flag}) salvo no CosmosDB.")
+            entity = {
+                "PartitionKey": user,
+                "RowKey": event_id,
+                "flag_name": flag,
+                "result": decoded["result"],
+                "timestamp": decoded.get("timestamp", time.strftime("%Y-%m-%dT%H:%M:%SZ"))
+            }
 
-        audit_queue_client.send_message(msg.content)
-        log.info(f"Mensagem ID: {msg.id} copiada para fila de auditoria.")
+            table_client.upsert_entity(entity=entity, mode=UpdateMode.MERGE)
+            log.info(f"Evento {event_id} (Flag: {flag}) salvo no CosmosDB.")
 
-        queue_client.delete_message(msg.id, msg.pop_receipt)
-        log.info(f"Mensagem ID: {msg.id} removida da fila principal.")
+            audit_queue_client.send_message(msg.content)
+            log.info(f"Mensagem ID: {msg.id} copiada para fila de auditoria.")
+
+            queue_client.delete_message(msg.id, msg.pop_receipt)
+            log.info(f"Mensagem ID: {msg.id} removida da fila principal.")
 
     except Exception as e:
+        span = trace.get_current_span()
+        if span and span.is_recording():
+            span.record_exception(e)
         log.error(f"Erro ao processar mensagem ID: {msg.id} → {e}")
+
+
+class _noop_ctx:
+    def __enter__(self): return self
+    def __exit__(self, *_): pass
 
 # ---------------------------------------------------------
 # Worker Loop
@@ -127,6 +146,9 @@ def queue_worker_loop():
 # Flask
 # ---------------------------------------------------------
 app = Flask(__name__)
+
+from otel import init_otel, get_tracer, get_meter
+init_otel(app, "analytics-service")
 
 @app.route("/health")
 def health():

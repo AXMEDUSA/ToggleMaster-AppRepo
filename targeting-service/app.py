@@ -9,14 +9,15 @@ from dotenv import load_dotenv
 from functools import wraps
 import logging
 
-# Configura o loggingg
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
-# Carrega .env para desenvolvimento localç
-load_dotenv() 
+load_dotenv()
 
 app = Flask(__name__)
+
+from otel import init_otel
+init_otel(app, "targeting-service")
 
 # --- Configuração ---
 DATABASE_URL = os.getenv("DATABASE_URL")
