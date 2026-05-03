@@ -20,7 +20,6 @@ def init_otel(app, service_name: str):
     resource = Resource.create({
         SERVICE_NAME: service_name,
         DEPLOYMENT_ENVIRONMENT: os.getenv("OTEL_RESOURCE_ATTRIBUTES", "production"),
-        "service.namespace": "togglemaster",
     })
 
     tracer_provider = TracerProvider(resource=resource)
