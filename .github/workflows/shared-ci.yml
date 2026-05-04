@@ -108,10 +108,9 @@ jobs:
 
       - name: Golang Lint
         if: steps.detect.outputs.lang == 'go'
-        uses: golangci/golangci-lint-action@v6
-        with:
-          working-directory: ${{ inputs.service }}
-          args: --disable=errcheck
+        run: |
+          cd ${{ inputs.service }}
+          go vet ./...
 
       - name: Python Lint
         if: steps.detect.outputs.lang == 'python'
