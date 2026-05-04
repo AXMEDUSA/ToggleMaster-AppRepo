@@ -12,6 +12,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	ddtracer "github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
+	"github.com/DataDog/dd-trace-go/v2/instrumentation/httptrace"
 )
 
 // App struct (para injeção de dependência)
@@ -66,8 +67,12 @@ func main() {
 	mux.HandleFunc("/validate", app.validateKeyHandler)
 	mux.Handle("/admin/keys", app.masterKeyAuthMiddleware(http.HandlerFunc(app.createKeyHandler)))
 
-	// Envolve o mux com o middleware OTel (traces + métricas HTTP automáticos)
-	handler := otelhttp.NewHandler(mux, "auth-service")
+	ddMiddleware := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _, finish, _ := httptrace.BeforeHandle(&httptrace.ServeConfig{Service: "auth-service"}, w, r)
+		defer finish()
+		mux.ServeHTTP(w, r)
+	})
+	handler := otelhttp.NewHandler(ddMiddleware, "auth-service")
 
 	log.Printf("Serviço de Autenticação (Go) rodando na porta %s", port)
 	if err := http.ListenAndServe(":"+port, handler); err != nil {
