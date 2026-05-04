@@ -79,7 +79,6 @@ jobs:
         if: steps.detect.outputs.lang == 'go'
         run: |
           cd ${{ inputs.service }}
-          go mod tidy
           go build ./...
 
       - name: Go Tests

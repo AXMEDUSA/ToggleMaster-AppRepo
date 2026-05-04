@@ -2,8 +2,6 @@ module auth-service
 
 go 1.24.0
 
-toolchain go1.24.13
-
 require (
 	github.com/jackc/pgx/v4 v4.18.3
 	github.com/joho/godotenv v1.5.1
