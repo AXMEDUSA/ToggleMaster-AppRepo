@@ -1,6 +1,6 @@
 module auth-service
 
-go 1.25.0
+go 1.25.7
 
 require (
 	github.com/DataDog/dd-trace-go/v2 v2.8.0

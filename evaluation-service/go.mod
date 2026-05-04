@@ -1,6 +1,6 @@
 module evaluation-service
 
-go 1.25.0
+go 1.25.7
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azqueue v1.0.1
