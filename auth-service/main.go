@@ -10,6 +10,8 @@ import (
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/joho/godotenv"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+
+	ddtracer "github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 )
 
 // App struct (para injeção de dependência)
@@ -20,6 +22,13 @@ type App struct {
 
 func main() {
 	_ = godotenv.Load()
+
+	ddtracer.Start(
+		ddtracer.WithService("auth-service"),
+		ddtracer.WithEnv("production"),
+		ddtracer.WithServiceVersion("1.0.0"),
+	)
+	defer ddtracer.Stop()
 
 	ctx := context.Background()
 	shutdown := initOTel(ctx)

@@ -11,6 +11,8 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+
+	ddtracer "github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 )
 
 // Contexto global para Redis
@@ -27,6 +29,13 @@ type App struct {
 
 func main() {
 	_ = godotenv.Load()
+
+	ddtracer.Start(
+		ddtracer.WithService("evaluation-service"),
+		ddtracer.WithEnv("production"),
+		ddtracer.WithServiceVersion("1.0.0"),
+	)
+	defer ddtracer.Stop()
 
 	ctx := context.Background()
 	shutdown := initOTel(ctx)
