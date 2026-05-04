@@ -62,12 +62,13 @@ func main() {
 		MasterKey:  masterKey,
 	}
 
-	mux := ddhttp.NewServeMux(ddhttp.WithService("auth-service"))
+	mux := http.NewServeMux()
 	mux.HandleFunc("/health", app.healthHandler)
 	mux.HandleFunc("/validate", app.validateKeyHandler)
 	mux.Handle("/admin/keys", app.masterKeyAuthMiddleware(http.HandlerFunc(app.createKeyHandler)))
 
-	handler := otelhttp.NewHandler(mux, "auth-service")
+	otelHandler := otelhttp.NewHandler(mux, "auth-service")
+	handler := ddhttp.WrapHandler(otelHandler, "auth-service", "/")
 
 	log.Printf("Serviço de Autenticação (Go) rodando na porta %s", port)
 	if err := http.ListenAndServe(":"+port, handler); err != nil {

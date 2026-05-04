@@ -108,11 +108,12 @@ func main() {
 		TargetingServiceURL: targetingSvcURL,
 	}
 
-	mux := ddhttp.NewServeMux(ddhttp.WithService("evaluation-service"))
+	mux := http.NewServeMux()
 	mux.HandleFunc("/health", app.healthHandler)
 	mux.HandleFunc("/evaluate", app.evaluationHandler)
 
-	handler := otelhttp.NewHandler(mux, "evaluation-service")
+	otelHandler := otelhttp.NewHandler(mux, "evaluation-service")
+	handler := ddhttp.WrapHandler(otelHandler, "evaluation-service", "/")
 
 	log.Printf("Serviço de Avaliação rodando na porta %s", port)
 	if err := http.ListenAndServe(":"+port, handler); err != nil {
