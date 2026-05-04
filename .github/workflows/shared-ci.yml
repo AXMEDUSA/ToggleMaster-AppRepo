@@ -57,9 +57,9 @@ jobs:
 
       - name: Setup Go
         if: steps.detect.outputs.lang == 'go'
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: "1.24.13" # Atualizado para 1.24.13 devido às dependências modernas
+          go-version: "1.25.0"
 
       ########################################
       # PYTHON SETUP
