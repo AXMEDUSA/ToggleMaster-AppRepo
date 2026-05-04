@@ -13,7 +13,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	ddtracer "github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
-	"github.com/DataDog/dd-trace-go/v2/instrumentation/httptrace"
+	ddhttp "github.com/DataDog/dd-trace-go/contrib/net/http/v2"
 )
 
 // Contexto global para Redis
@@ -108,16 +108,11 @@ func main() {
 		TargetingServiceURL: targetingSvcURL,
 	}
 
-	mux := http.NewServeMux()
+	mux := ddhttp.NewServeMux(ddhttp.WithService("evaluation-service"))
 	mux.HandleFunc("/health", app.healthHandler)
 	mux.HandleFunc("/evaluate", app.evaluationHandler)
 
-	ddMiddleware := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _, finish, _ := httptrace.BeforeHandle(&httptrace.ServeConfig{Service: "evaluation-service"}, w, r)
-		defer finish()
-		mux.ServeHTTP(w, r)
-	})
-	handler := otelhttp.NewHandler(ddMiddleware, "evaluation-service")
+	handler := otelhttp.NewHandler(mux, "evaluation-service")
 
 	log.Printf("Serviço de Avaliação rodando na porta %s", port)
 	if err := http.ListenAndServe(":"+port, handler); err != nil {
