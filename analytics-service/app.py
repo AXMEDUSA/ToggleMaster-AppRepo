@@ -26,12 +26,11 @@ load_dotenv()
 # ---------------------------------------------------------
 AZURE_QUEUE_CONN = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
 AZURE_QUEUE_NAME = os.getenv("AZURE_QUEUE_NAME")
-AZURE_AUDIT_QUEUE_NAME = os.getenv("AZURE_AUDIT_QUEUE_NAME", "fila-audit")
 
 AZURE_TABLE_CONN = os.getenv("AZURE_TABLE_CONNECTION_STRING")
 AZURE_TABLE_NAME = os.getenv("AZURE_TABLE_NAME", "Events")
 
-if not all([AZURE_QUEUE_CONN, AZURE_QUEUE_NAME, AZURE_TABLE_CONN, AZURE_TABLE_NAME]):
+if not all([AZURE_QUEUE_CONN, AZURE_QUEUE_NAME, AZURE_TABLE_CONN]):
     log.critical("Variáveis de ambiente faltando.")
     sys.exit(1)
 
@@ -42,10 +41,6 @@ try:
     queue_client = QueueClient.from_connection_string(
         conn_str=AZURE_QUEUE_CONN,
         queue_name=AZURE_QUEUE_NAME
-    )
-    audit_queue_client = QueueClient.from_connection_string(
-        conn_str=AZURE_QUEUE_CONN,
-        queue_name=AZURE_AUDIT_QUEUE_NAME
     )
     log.info("Conectado ao Azure Queue Storage.")
 except Exception as e:
@@ -103,9 +98,6 @@ def process_message(msg):
 
             table_client.upsert_entity(entity=entity, mode=UpdateMode.MERGE)
             log.info(f"Evento {event_id} (Flag: {flag}) salvo no CosmosDB.")
-
-            audit_queue_client.send_message(msg.content)
-            log.info(f"Mensagem ID: {msg.id} copiada para fila de auditoria.")
 
             queue_client.delete_message(msg.id, msg.pop_receipt)
             log.info(f"Mensagem ID: {msg.id} removida da fila principal.")
