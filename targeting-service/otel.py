@@ -37,6 +37,6 @@ def init_otel(app, service_name: str):
 
     FlaskInstrumentor().instrument_app(app)
     RequestsInstrumentor().instrument()
-    Psycopg2Instrumentor().instrument()
+    Psycopg2Instrumentor().instrument(skip_dep_check=True)
 
     log.info(f"[OTel] {service_name} → {endpoint}")
