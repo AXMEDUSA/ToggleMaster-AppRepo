@@ -51,12 +51,12 @@ def get_conn():
         conn = pool.getconn()
         conn.cursor().execute("SELECT 1")
         return conn
-    except Exception:
-        log.warning("Pool com conexão morta, recriando pool...")
+    except Exception as err:
+        log.warning("Pool com conexão morta, recriando pool... erro: %s", err)
         try:
             pool.closeall()
-        except Exception:
-            pass
+        except Exception as close_err:
+            log.warning("Erro ao fechar pool antigo: %s", close_err)
         pool = _make_pool()
         return pool.getconn()
 
