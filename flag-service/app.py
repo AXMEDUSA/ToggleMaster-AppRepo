@@ -4,7 +4,7 @@ import logging
 import psycopg2
 import requests
 from psycopg2.extras import RealDictCursor
-from psycopg2.pool import SimpleConnectionPool
+from psycopg2.pool import ThreadedConnectionPool
 from flask import Flask, request, jsonify
 from dotenv import load_dotenv
 from functools import wraps
@@ -26,14 +26,40 @@ if not DATABASE_URL or not AUTH_SERVICE_URL:
     log.critical("Erro: DATABASE_URL e AUTH_SERVICE_URL devem ser definidos.")
     sys.exit(1)
 
-# --- Pool de Conexão com o Banco ---
-# Inicializa o pool de conexões (Mín: 1, Máx: 5 conexões)
+# Keepalive TCP para evitar que o Azure PostgreSQL feche conexões ociosas
+_CONN_KWARGS = {
+    "dsn": DATABASE_URL,
+    "keepalives": 1,
+    "keepalives_idle": 30,
+    "keepalives_interval": 10,
+    "keepalives_count": 5,
+}
+
+def _make_pool():
+    return ThreadedConnectionPool(1, 5, **_CONN_KWARGS)
+
 try:
-    pool = SimpleConnectionPool(1, 5, dsn=DATABASE_URL)
+    pool = _make_pool()
     log.info("Pool de conexões com o PostgreSQL inicializado.")
 except psycopg2.OperationalError as e:
     log.critical(f"Erro fatal ao conectar ao PostgreSQL: {e}")
     sys.exit(1)
+
+def get_conn():
+    """Retorna conexão do pool, recriando o pool se estiver com conexões mortas."""
+    global pool
+    try:
+        conn = pool.getconn()
+        conn.cursor().execute("SELECT 1")
+        return conn
+    except Exception:
+        log.warning("Pool com conexão morta, recriando pool...")
+        try:
+            pool.closeall()
+        except Exception:
+            pass
+        pool = _make_pool()
+        return pool.getconn()
 
 # --- Middleware de Autenticação ---
 def require_auth(f):
@@ -85,7 +111,7 @@ def create_flag():
     conn = None
     cur = None
     try:
-        conn = pool.getconn()
+        conn = get_conn()
         cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute(
             "INSERT INTO flags (name, description, is_enabled, created_at, updated_at) "
@@ -115,7 +141,7 @@ def get_flags():
     conn = None
     cur = None
     try:
-        conn = pool.getconn()
+        conn = get_conn()
         cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute("SELECT * FROM flags ORDER BY name")
         flags = cur.fetchall()
@@ -134,7 +160,7 @@ def get_flag(name):
     conn = None
     cur = None
     try:
-        conn = pool.getconn()
+        conn = get_conn()
         cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute("SELECT * FROM flags WHERE name = %s", (name,))
         flag = cur.fetchone()
@@ -177,7 +203,7 @@ def update_flag(name):
     conn = None
     cur = None
     try:
-        conn = pool.getconn()
+        conn = get_conn()
         cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute(query, tuple(values))
         
@@ -203,7 +229,7 @@ def delete_flag(name):
     conn = None
     cur = None
     try:
-        conn = pool.getconn()
+        conn = get_conn()
         cur = conn.cursor()
         cur.execute("DELETE FROM flags WHERE name = %s", (name,))
         
