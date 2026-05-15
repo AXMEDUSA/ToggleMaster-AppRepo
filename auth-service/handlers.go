@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -43,9 +44,12 @@ func (a *App) validateKeyHandler(w http.ResponseWriter, r *http.Request) {
 	var id int
 	err := a.DB.QueryRow("SELECT id FROM api_keys WHERE key_hash = $1 AND is_active = true", keyHash).Scan(&id)
 	if err != nil {
-		// Se não encontrar (sql.ErrNoRows), ou qualquer outro erro, a chave é inválida
-		log.Printf("Falha na validação da chave (hash: %s...): %v", keyHash[:6], err)
-		http.Error(w, "Chave de API inválida ou inativa", http.StatusUnauthorized)
+		if err == sql.ErrNoRows {
+			http.Error(w, "Chave de API inválida ou inativa", http.StatusUnauthorized)
+		} else {
+			log.Printf("Erro de banco ao validar chave: %v", err)
+			http.Error(w, "Erro interno ao validar chave", http.StatusInternalServerError)
+		}
 		return
 	}
 
