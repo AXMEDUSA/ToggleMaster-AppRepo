@@ -66,6 +66,12 @@ func main() {
 	mux.HandleFunc("/health", app.healthHandler)
 	mux.HandleFunc("/validate", app.validateKeyHandler)
 	mux.Handle("/admin/keys", app.masterKeyAuthMiddleware(http.HandlerFunc(app.createKeyHandler)))
+	// endpoint de teste para self-healing — só ativo em ambiente não-produtivo
+	if os.Getenv("ENABLE_ERROR_SIMULATION") == "true" {
+		mux.HandleFunc("/simulate-error", func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "simulated internal server error", http.StatusInternalServerError)
+		})
+	}
 
 	otelHandler := otelhttp.NewHandler(mux, "auth-service")
 	handler := ddhttp.WrapHandler(otelHandler, "auth-service", "/")
